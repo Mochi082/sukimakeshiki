@@ -328,12 +328,28 @@ function updatePreview() {
 
   const prefLabel = locLatLng ? PREF_LABELS[detectPref(locLatLng.lat, locLatLng.lng)] : null;
   document.getElementById('previewPrefText').textContent = prefLabel || '場所未選択';
-  document.querySelector('.preview-pref-tag').classList.toggle('empty', !prefLabel);
+  document.getElementById('previewLoc').classList.toggle('empty', !prefLabel);
 
   const desc   = document.getElementById('spotDesc').value.trim();
   const descEl = document.getElementById('previewDesc');
   descEl.textContent = desc || '説明が入ります';
   descEl.classList.toggle('empty', !desc);
+
+  const timeVal   = document.getElementById('timeSelect').value;
+  const timeTagEl = document.getElementById('previewTimeTag');
+  timeTagEl.textContent = timeVal || 'おすすめ時間帯未選択';
+  timeTagEl.classList.toggle('empty', !timeVal);
+
+  const levelTagEl = document.getElementById('previewLevelTag');
+  levelTagEl.textContent = starVal > 0 ? DIFF_LABELS[starVal] : '難易度未評価';
+  levelTagEl.classList.toggle('empty', starVal === 0);
+
+  const selectedFacilities = getSelectedFacilities();
+  document.querySelectorAll('#previewAccess .access-icon').forEach(icon => {
+    const has = selectedFacilities.includes(icon.dataset.fac);
+    icon.classList.toggle('ok', has);
+    icon.classList.toggle('ng', !has);
+  });
 }
 
 /* ============================
@@ -349,6 +365,7 @@ function countChars(el, counterId, max) {
 /* ============================
    道の難易度評価
    ============================ */
+const DIFF_LABELS = ['', '初級', '初中級', '中級', '上級', 'エキスパート'];
 let starVal = 0;
 function setStars(v) {
   starVal = v;
@@ -358,8 +375,8 @@ function setStars(v) {
     btn.classList.toggle('active', parseInt(btn.dataset.v) <= v);
   });
   document.getElementById('starLabel').textContent = labels[v] || '未評価';
-  document.getElementById('previewScore').textContent = v > 0 ? v + '.0' : '-';
   document.getElementById('difficultyInput').value = v;
+  updatePreview();
 }
 
 /* ============================
@@ -377,6 +394,7 @@ function flashField(id) {
 function toggleFacility(btn) {
   btn.classList.toggle('active');
   document.getElementById('facilitiesInput').value = getSelectedFacilities().join(',');
+  updatePreview();
 }
 
 function getSelectedFacilities() {

@@ -114,7 +114,7 @@
 
         <div class="form-field">
           <label class="form-label">おすすめ時間帯 <span class="required">必須</span></label>
-          <select class="form-select" id="timeSelect" name="time">
+          <select class="form-select" id="timeSelect" name="time" onchange="updatePreview()">
             <option value="">指定してください</option>
             <option {{ 'selected' if post.time_select == 'morning' }}>morning</option>
             <option {{ 'selected' if post.time_select == 'midday' }}>midday</option>
@@ -258,17 +258,28 @@
           <div class="preview-img-placeholder"><i class="fa fa-image"></i></div>
         </div>
         <div class="preview-body">
-          <div class="preview-spot-name empty" id="previewName">スポット名が入ります</div>
-          <div class="preview-pref-tag empty">
-            <i class="fa fa-map-marker-alt"></i>
-            <span id="previewPrefText">場所未選択</span>
+          <div class="preview-top">
+            <div>
+              <div class="preview-spot-name empty" id="previewName">スポット名が入ります</div>
+              <div class="preview-loc empty" id="previewLoc">
+                <i class="fa fa-map-marker-alt"></i>
+                <span id="previewPrefText">場所未選択</span>
+              </div>
+            </div>
           </div>
           <div class="preview-desc empty" id="previewDesc">説明が入ります</div>
-          <div class="preview-meta">
-            <div class="preview-meta-item"><i class="fa fa-heart"></i> 0</div>
-            <div class="preview-meta-item"><i class="fa fa-comment"></i> 0</div>
-            <div class="preview-meta-item"><i class="fa fa-star"></i>
-              <span id="previewScore">-</span>
+          <div class="preview-footer">
+            <div class="preview-select">
+              <div class="preview-tags-row" id="previewTagsRow">
+                <span class="preview-tag empty" id="previewTimeTag">おすすめ時間帯未選択</span>
+                <span class="preview-tag empty" id="previewLevelTag">難易度未評価</span>
+              </div>
+              <div class="preview-access" id="previewAccess">
+                <i class="fa fa-gas-pump access-icon ng" data-fac="gas" title="給油"></i>
+                <i class="fa fa-utensils access-icon ng" data-fac="food" title="飲食"></i>
+                <i class="fa fa-parking access-icon ng" data-fac="parking" title="駐輪場"></i>
+                <i class="fa fa-restroom access-icon ng" data-fac="restroom" title="トイレ"></i>
+              </div>
             </div>
           </div>
         </div>
@@ -278,7 +289,6 @@
       <div class="tips-card">
         <div class="tips-head"><i class="fa fa-lightbulb"></i> 投稿のコツ</div>
         <div class="tips-list">
-          <div class="tips-item">写真は晴れた日・光の良い時間帯に撮るとスコアが上がりやすいです</div>
           <div class="tips-item">住所を入力するとマップに正確なピンが立ちます</div>
           <div class="tips-item">難易度は正直に入力しましょう。安全のためです</div>
           <div class="tips-item">新しい写真を選ばなければ、今の写真がそのまま使われます</div>

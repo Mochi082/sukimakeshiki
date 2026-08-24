@@ -38,6 +38,16 @@ document.addEventListener('submit', async (e) => {
   }
 });
 
+/* ── カードをタップしたらspotsへ遷移 ── */
+document.addEventListener('click', (e) => {
+  const card = e.target.closest('.fav-card');
+  if (!card) return;
+  if (e.target.closest('.fav-form')) return; // 削除ボタンは対象外
+
+  const spotId = card.dataset.postId;
+  window.location.href = spotId ? `/spots?spot=${spotId}` : '/spots';
+});
+
 function updateFavCountAfterRemoval() {
   const favContent = document.getElementById('favContent');
   const remaining = favContent.querySelectorAll('.fav-card').length;

@@ -196,6 +196,17 @@ window.addEventListener('load', () => {
       setTimeout(() => card.classList.add('visible'), i * 100);
     }
   });
+
+  // favoriteページ等から ?spot=<id> 付きで遷移してきた場合、該当カードにスクロール＆フォーカス
+  const targetSpotId = new URLSearchParams(window.location.search).get('spot');
+  if (targetSpotId) {
+    const targetCard = document.querySelector(`.spot-card[data-post-id="${targetSpotId}"]`);
+    if (targetCard) {
+      targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      targetCard.classList.add('card-focus');
+      setTimeout(() => targetCard.classList.remove('card-focus'), 1200);
+    }
+  }
 });
 
 /* 都県名 → 内部ID のマッピング */

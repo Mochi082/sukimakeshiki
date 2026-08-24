@@ -114,6 +114,7 @@
   overflow: hidden;
   transition: border-color 0.2s, transform 0.2s;
   animation: fadeInCard 0.3s ease both;
+  cursor: pointer;
 }
 .fav-card:hover {
   border-color: rgba(255,255,255,0.16);
