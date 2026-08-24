@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>すきまけしき － ガレージ情報編集</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/settings.css">
+</head>
+<body>
+  
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash-area">
+        {% for message in messages %}
+          <div class="flash-message">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+<div id="settings-page" class="page active">
+
+  <header class="settings-header">
+    <a href="{{ url_for('settings') }}" class="back-btn"><i class="fa fa-chevron-left"></i></a>
+    <div class="header-divider"></div>
+    <span class="page-label">ガレージ情報編集</span>
+  </header>
+
+  <div class="settings-content">
+    <section class="settings-section">
+      <div class="settings-card">
+        <form method="POST" action="{{ url_for('garage_edit') }}" novalidate>
+          <div class="settings-row settings-dropdown-trigger-row" onclick="toggleBikeTypeDropdown()">
+            <label class="settings-row-label">種類</label>
+            <div class="settings-row-right">
+              <span class="settings-dropdown-value" id="bikeTypeValue">{{ current_user.bike_type or '選択してください' }}</span>
+              <i class="fa fa-chevron-down settings-dropdown-chevron" id="bikeTypeChevron"></i>
+            </div>
+          </div>
+          <div class="settings-dropdown-panel" id="bikeTypeDropdownPanel">
+            {% for t in ['アメリカン','ストリート','オールドルック','ミニバイク','ネイキッド','スポーツ/レプリカ','オフロード','スクーター(51cc以上)','スクーター(50cc以下)','ツアラー','アドベンチャー','スクランブラー','コンペティション','トライク','EV'] %}
+            <div class="settings-dropdown-item {{ 'selected' if current_user.bike_type == t else '' }}" data-value="{{ t }}" onclick="selectBikeType(event, '{{ t }}')">{{ t }}</div>
+            {% endfor %}
+          </div>
+          <input type="hidden" name="bike_type" id="bikeTypeInput" value="{{ current_user.bike_type or '' }}">
+          <div class="settings-divider"></div>
+          <div class="settings-row">
+            <label class="settings-row-label">車体名</label>
+            <div class="settings-row-right">
+              <input class="settings-input" type="text" name="bike_name"
+                value="{{ current_user.bike_name or '' }}" placeholder="例：CB400SF">
+            </div>
+          </div>
+          <div class="settings-divider"></div>
+          <div class="settings-row">
+            <label class="settings-row-label">排気量 (cc)</label>
+            <div class="settings-row-right">
+              <input class="settings-input" type="number" name="engine"
+                value="{{ current_user.bike_power or '' }}" placeholder="例：400">
+            </div>
+          </div>
+          <div class="settings-divider"></div>
+          {% set activity_labels = {'morning': 'morning', 'day': 'midday', 'evening': 'evening', 'night': 'night'} %}
+          <div class="settings-row settings-dropdown-trigger-row" onclick="toggleActivityTimeDropdown()">
+            <label class="settings-row-label">活動時間</label>
+            <div class="settings-row-right">
+              <span class="settings-dropdown-value" id="activityTimeValue">{{ activity_labels.get(current_user.active_time, '選択してください') }}</span>
+              <i class="fa fa-chevron-down settings-dropdown-chevron" id="activityTimeChevron"></i>
+            </div>
+          </div>
+          <div class="settings-dropdown-panel" id="activityTimeDropdownPanel">
+            {% for value, label in activity_labels.items() %}
+            <div class="settings-dropdown-item {{ 'selected' if current_user.active_time == value else '' }}" data-value="{{ value }}" onclick="selectActivityTime(event, '{{ value }}', '{{ label }}')">{{ label }}</div>
+            {% endfor %}
+          </div>
+          <input type="hidden" name="activity_time" id="activityTimeInput" value="{{ current_user.active_time or '' }}">
+          <div class="settings-divider"></div>
+          <div class="settings-row settings-row-action">
+            <button type="submit" class="settings-btn-primary">保存</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- <div class="settings-toast" id="settingsToast"></div> -->
+
+<script src="/static/js/settings.js"></script>
+</body>
+</html>

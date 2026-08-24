@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>すきまけしき － settings</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/settings.css">
+</head>
+<body>
+
+<!-- ===== DRAWER ===== -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<nav class="drawer" id="drawer">
+  <div class="drawer-logo">
+    <img src="/static/images/icon.png" alt="">
+    <div class="logo-name">sukima</div>
+    <div class="logo-sub">すきまけしき</div>
+  </div>
+  <div class="drawer-menu">
+    <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' else '' }}"><i class="fa fa-home"></i> home</a>
+    <a href="{{ url_for('post') }}" class="{{ 'active' if request.endpoint == 'post' else '' }}"><i class="fa fa-plus"></i> post</a>
+    <a href="{{ url_for('post_list') }}" class="{{ 'active' if request.endpoint == 'post_list' else '' }}"><i class="fa fa-pen"></i> My post</a>
+    <a href="{{ url_for('spots') }}" class="{{ 'active' if request.endpoint == 'spots' else '' }}"><i class="fa fa-search"></i> spots</a>
+    <a href="{{ url_for('favorite') }}" class="{{ 'active' if request.endpoint == 'favorite' else '' }}"><i class="fa fa-bookmark"></i> favorite</a>
+    <a href="{{ url_for('map') }}" class="{{ 'active' if request.endpoint == 'map' else '' }}"><i class="fa fa-unlock-alt"></i> unlock</a>
+    <div class="drawer-spacer"></div>
+    <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint == 'settings' else '' }}"><i class="fa fa-cog"></i> settings</a>
+    <a href="{{ url_for('logout') }}" class="drawer-logout"><i class="fa fa-sign-out-alt"></i> ログアウト</a>
+    <div class="drawer-ticket"><i class="fa fa-ticket"></i> チケット <span id="drawerTicketCount">{{ ticket_count }}</span>枚</div>
+  </div>
+</nav>
+
+<!-- ===== SETTINGS PAGE ===== -->
+<div id="settings-page" class="page active">
+
+  <header class="settings-header">
+    <button class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></button>
+    <div class="header-divider"></div>
+    <span class="page-label">settings</span>
+  </header>
+
+  <div class="settings-content">
+
+    <!-- プロフィール -->
+    <section class="settings-section">
+      <div class="settings-section-label">アカウント</div>
+      <div class="settings-card">
+        <a href="{{ url_for('profile_edit') }}" class="settings-row settings-row-link">
+          <i class="fa fa-user settings-row-icon"></i>
+          <span class="settings-row-label">プロフィール編集</span>
+          <i class="fa fa-chevron-right settings-row-chevron"></i>
+        </a>
+        <div class="settings-divider"></div>
+        <a href="{{ url_for('garage_edit') }}" class="settings-row settings-row-link">
+          <i class="fa fa-motorcycle settings-row-icon"></i>
+          <span class="settings-row-label">ガレージ情報編集</span>
+          <i class="fa fa-chevron-right settings-row-chevron"></i>
+        </a>
+        <div class="settings-divider"></div>
+        <a href="{{ url_for('password_edit') }}" class="settings-row settings-row-link">
+          <i class="fa fa-lock settings-row-icon"></i>
+          <span class="settings-row-label">パスワード変更</span>
+          <i class="fa fa-chevron-right settings-row-chevron"></i>
+        </a>
+      </div>
+    </section>
+
+    <!-- アプリについて -->
+    <section class="settings-section">
+      <div class="settings-section-label">アプリについて</div>
+      <div class="settings-card">
+        <a class="settings-row settings-row-link" href="#">
+          <span class="settings-row-label">利用規約</span>
+          <i class="fa fa-chevron-right settings-row-chevron"></i>
+        </a>
+        <div class="settings-divider"></div>
+        <a class="settings-row settings-row-link" href="#">
+          <span class="settings-row-label">プライバシーポリシー</span>
+          <i class="fa fa-chevron-right settings-row-chevron"></i>
+        </a>
+        <div class="settings-divider"></div>
+        <div class="settings-row">
+          <span class="settings-row-label">バージョン</span>
+          <span class="settings-row-value">1.0.2</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 退会 -->
+    <section class="settings-section">
+      <div class="settings-card">
+        <a href="{{ url_for('withdraw') }}" class="settings-row settings-row-link settings-row-danger-soft">
+          <i class="fa fa-user-times settings-row-icon"></i>
+          <span class="settings-row-label">退会する</span>
+          <i class="fa fa-chevron-right settings-row-chevron"></i>
+        </a>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script src="/static/js/settings.js"></script>
+</body>
+</html>

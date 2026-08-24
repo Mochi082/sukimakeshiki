@@ -1,0 +1,528 @@
+/* ==============================
+   MAP PAGE
+   ============================== */
+
+#map-page {
+  height: 100vh;
+  overflow: hidden;
+  background: #1a1a1a;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- レイアウト ---- */
+.map-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+/* ---- 左カラム（マップ） ---- */
+.map-col {
+  padding: 20px 24px;
+  border-right: 1px solid #2a2a2a;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.map-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.map-heading {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.06em;
+}
+
+.map-sub {
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.04em;
+}
+
+/* ---- SVGラッパー ---- */
+.map-svg-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.kanto-map {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  filter: drop-shadow(0 4px 24px rgba(0,0,0,0.5));
+}
+
+/* ---- 都県パス（共通） ---- */
+.pref-path {
+  cursor: pointer;
+  stroke: #0e0e0e;
+  stroke-width: 2;
+  transition: filter 0.25s, opacity 0.25s;
+}
+
+/* ロック状態 */
+.pref-path.locked {
+  fill: #2a2a2a;
+  filter: none;
+}
+
+.pref-path.locked:hover {
+  fill: #333;
+}
+
+/* 解除済み */
+.pref-path.unlocked {
+  filter: drop-shadow(0 0 6px rgba(200,164,90,0.15));
+}
+
+.pref-path.unlocked:hover {
+  filter: drop-shadow(0 0 12px rgba(200,164,90,0.35)) brightness(1.15);
+}
+
+/* 選択中 */
+.pref-path.selected {
+  stroke: #c8a45a;
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 14px rgba(200,164,90,0.5));
+}
+
+/* 解除アニメーション */
+@keyframes unlockFlash {
+  0%   { filter: grayscale(1) brightness(0.4); }
+  25%  { filter: grayscale(0) brightness(2.2); }
+  50%  { filter: grayscale(0) brightness(1.4); }
+  100% { filter: grayscale(0) brightness(1) drop-shadow(0 0 6px rgba(200,164,90,0.2)); }
+}
+
+.pref-path.unlocking {
+  animation: unlockFlash 1.2s ease forwards;
+}
+
+/* ロックアイコン（SVG内テキスト） */
+.lock-icon {
+  font-size: 12px;
+  fill: rgba(255,255,255,0.25);
+  opacity: 0.3;
+  pointer-events: none;
+  user-select: none;
+}
+
+.pref-label {
+  font-size: 13px;
+  font-weight: 600;
+  fill: rgba(255,255,255,0.7);
+  pointer-events: none;
+  user-select: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.pref-label.locked-label {
+  fill: rgba(255,255,255,0.22);
+}
+
+/* ---- 凡例 ---- */
+.map-legend {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  gap: 20px;
+  z-index: 5;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.legend-dot.unlocked { background: #c8a45a; }
+.legend-dot.locked   { background: #2a2a2a; border: 1px solid #444; }
+
+/* ---- 右カラム（情報パネル） ---- */
+.info-col {
+  padding: 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+/* ---- 駅名・地名検索 ---- */
+.area-search-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.area-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 0 12px;
+  transition: border-color 0.2s;
+}
+
+.area-search-bar:focus-within {
+  border-color: rgba(200, 164, 90, 0.5);
+  background: rgba(200, 164, 90, 0.04);
+}
+
+.area-search-icon {
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.area-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.82);
+  padding: 11px 0;
+  font-family: inherit;
+}
+
+.area-search-input::placeholder { color: rgba(255, 255, 255, 0.22); }
+
+.area-search-clear {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 12px;
+  transition: color 0.15s;
+}
+.area-search-clear:hover { color: rgba(255, 255, 255, 0.6); }
+
+.area-suggestions {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  display: none;
+}
+.area-suggestions.open { display: block; }
+
+.area-sug-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 0.15s;
+}
+.area-sug-item:last-child { border-bottom: none; }
+.area-sug-item:hover { background: rgba(200, 164, 90, 0.07); }
+
+.area-sug-icon {
+  color: #c8a45a;
+  font-size: 12px;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.area-sug-name {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.area-sug-detail {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.32);
+  margin-top: 2px;
+}
+
+.area-sug-empty {
+  padding: 12px 14px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+}
+
+/* ---- 解除進捗 ---- */
+.unlock-progress {
+  background: #1c1c1c;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.progress-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 10px;
+  letter-spacing: 0.04em;
+}
+
+.progress-bar-wrap {
+  background: rgba(255,255,255,0.06);
+  border-radius: 50px;
+  height: 6px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #c8a45a, #e0b96a);
+  border-radius: 50px;
+  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+
+.progress-text {
+  font-size: 13px;
+  color: #c8a45a;
+  font-weight: 600;
+}
+
+/* ---- 都県パネル（マップ右下オーバーレイ） ---- */
+.pref-panel {
+  position: absolute;
+  bottom: 48px;
+  right: 20px;
+  width: 260px;
+  background: rgba(22,22,22,0.93);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  z-index: 10;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.pref-select-hint {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.2);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+/* 都県名ヘッダー */
+.pref-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pref-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.06em;
+}
+
+.pref-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 50px;
+  font-weight: 600;
+}
+
+.pref-status.unlocked {
+  background: rgba(200,164,90,0.15);
+  color: #c8a45a;
+  border: 1px solid rgba(200,164,90,0.3);
+}
+
+.pref-status.locked {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* 統計グリッド */
+.pref-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stat-cell {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  padding: 12px;
+  transition: filter 0.3s;
+}
+
+.stat-cell.blurred {
+  filter: blur(5px);
+  user-select: none;
+}
+
+.stat-cell-label {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 6px;
+}
+
+.stat-cell-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* チェックインボタン */
+.btn-checkin {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 50px;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-checkin.available {
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.85);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+.btn-checkin.available:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+.btn-checkin.available:active {
+  transform: translateY(0);
+}
+
+.btn-checkin.done {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.3);
+  cursor: default;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* チェックイン日時 */
+.checkin-date {
+  font-size: 11px;
+  color: rgba(255,255,255,0.3);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+/* ---- トースト通知 ---- */
+.unlock-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: linear-gradient(135deg, rgba(200,164,90,0.95), rgba(224,185,106,0.95));
+  color: #1a1a1a;
+  padding: 14px 28px;
+  border-radius: 50px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s, transform 0.35s;
+  z-index: 999;
+  box-shadow: 0 8px 32px rgba(200,164,90,0.4);
+}
+
+.unlock-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---- ロックオーバーレイ（未解除エリアのSVG内テキスト） ---- */
+.lock-group {
+  pointer-events: none;
+}
+
+/* ==============================
+   レスポンシブ
+   ============================== */
+@media (max-width: 767px) {
+  #map-page {
+    height: auto;
+    overflow: visible;
+  }
+
+  .map-body {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .map-col {
+    padding: 14px 12px;
+    border-right: none;
+    border-bottom: 1px solid #2a2a2a;
+    min-height: 60vw;
+  }
+
+  .kanto-map { max-width: 100%; }
+
+  .info-col {
+    padding: 14px 12px;
+  }
+
+  .pref-panel {
+    position: static;
+    width: auto;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: #1c1c1c;
+    margin: 0 12px 12px;
+  }
+}

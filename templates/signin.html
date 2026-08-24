@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>すきまけしき －  ログイン</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/login.css">
+  <link rel="stylesheet" href="/static/css/sign.css">
+</head>
+<body class="sign-page">
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash-area">
+        {% for message in messages %}
+          <div class="flash-message">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+<div id="signin-page" class="page active signin-page">
+
+  <!-- 背景 -->
+  <div class="login-bg"></div>
+  <div class="login-overlay"></div>
+
+
+  <!-- ログインカード -->
+  <div class="signin-wrap">
+    <div class="signin-card">
+
+      <h2 class="signin-title">ログイン</h2>
+
+      <form method="POST" action="{{ url_for('signin') }}" novalidate>
+
+        <!-- メールアドレス -->
+        <div class="form-group">
+          <label class="form-label" for="email">メールアドレス</label>
+          <input
+            class="form-input"
+            type="email"
+            id="email"
+            name="email"
+            value="{{ email or '' }}"
+            placeholder="example@email.com"
+            autocomplete="email"
+          >
+        </div>
+
+        <!-- パスワード -->
+        <div class="form-group">
+          <label class="form-label" for="password">パスワード</label>
+          <div class="input-wrap">
+            <input
+              class="form-input"
+              type="password"
+              id="password"
+              name="password"
+              placeholder="パスワードを入力"
+              autocomplete="current-password"
+
+            >
+            <button type="button" class="toggle-pw" onclick="togglePassword()" aria-label="パスワード表示切替">
+              <i class="fa fa-eye" id="pw-icon"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- パスワードを忘れ -->
+        <a class="forgot-link" href="#">パスワードをお忘れの場合</a>
+
+        <!-- ログインボタン -->
+        <button type="submit" class="btn-signin">
+          ログイン
+        </button>
+      </form>
+
+      <!-- 区切り -->
+      <div class="signin-divider"><span>または</span></div>
+
+      <!-- 新規登録へ -->
+      <p class="signup-link">
+        アカウントをお持ちでない場合は
+        <a href="{{ url_for('signup') }}">新規登録はこちら</a>
+      </p>
+
+    </div>
+  </div>
+
+</div>
+
+<script src="/static/js/signin.js"></script>
+</body>
+</html>

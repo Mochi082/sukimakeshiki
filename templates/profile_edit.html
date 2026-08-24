@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>すきまけしき － プロフィール編集</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/settings.css">
+</head>
+<body>
+  
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash-area">
+        {% for message in messages %}
+          <div class="flash-message">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+<div id="settings-page" class="page active">
+
+  <header class="settings-header">
+    <a href="{{ url_for('settings') }}" class="back-btn"><i class="fa fa-chevron-left"></i></a>
+    <div class="header-divider"></div>
+    <span class="page-label">プロフィール編集</span>
+  </header>
+
+  <div class="settings-content">
+    <section class="settings-section">
+      <div class="settings-card">
+        <div class="profile-row">
+          <div class="profile-avatar">{{ current_user.user_name[0] | upper }}</div>
+          <div class="profile-info">
+            <div class="profile-name">{{ current_user.user_name }}</div>
+            <div class="profile-email">{{ current_user.email }}</div>
+          </div>
+        </div>
+        <div class="settings-divider"></div>
+        <form method="POST" action="{{ url_for('profile_edit') }}">
+          <div class="settings-row">
+            <label class="settings-row-label">ユーザー名</label>
+            <div class="settings-row-right">
+              <input class="settings-input" type="text" name="user_name"
+                value="{{ current_user.user_name }}" maxlength="100">
+            </div>
+          </div>
+          <div class="settings-divider"></div>
+          <div class="settings-row">
+            <label class="settings-row-label">メールアドレス</label>
+            <div class="settings-row-right">
+              <span class="settings-row-value">{{ current_user.email }}</span>
+            </div>
+          </div>
+          <div class="settings-divider"></div>
+          <div class="settings-row settings-row-action">
+            <button type="submit" class="settings-btn-primary">変更を保存</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- <div class="settings-toast" id="settingsToast"></div> -->
+
+<script src="/static/js/settings.js"></script>
+</body>
+</html>

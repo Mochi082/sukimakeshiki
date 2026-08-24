@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>すきまけしき － my post</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/post_list.css">
+</head>
+<body>
+
+<!-- ===== DRAWER ===== -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<nav class="drawer" id="drawer">
+  <div class="drawer-logo">
+    <img src="/static/images/icon.png" alt="">
+    <div class="logo-name">sukima</div>
+    <div class="logo-sub">すきまけしき</div>
+  </div>
+  <div class="drawer-menu">
+    <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' else '' }}"><i class="fa fa-home"></i> home</a>
+    <a href="{{ url_for('post') }}" class="{{ 'active' if request.endpoint == 'post' else '' }}"><i class="fa fa-plus"></i> post</a>
+    <a href="{{ url_for('post_list') }}" class="{{ 'active' if request.endpoint == 'post_list' else '' }}"><i class="fa fa-pen"></i> My post</a>
+    <a href="{{ url_for('spots') }}" class="{{ 'active' if request.endpoint == 'spots' else '' }}"><i class="fa fa-search"></i> spots</a>
+    <a href="{{ url_for('favorite') }}" class="{{ 'active' if request.endpoint == 'favorite' else '' }}"><i class="fa fa-bookmark"></i> favorite</a>
+    <a href="{{ url_for('map') }}" class="{{ 'active' if request.endpoint == 'map' else '' }}"><i class="fa fa-unlock-alt"></i> unlock</a>
+    <div class="drawer-spacer"></div>
+    <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint == 'settings' else '' }}"><i class="fa fa-cog"></i> settings</a>
+    <a href="{{ url_for('logout') }}" class="drawer-logout"><i class="fa fa-sign-out-alt"></i> ログアウト</a>
+    <div class="drawer-ticket"><i class="fa fa-ticket"></i> チケット <span id="drawerTicketCount">{{ ticket_count }}</span>枚</div>
+  </div>
+</nav>
+
+<!-- ===== POST LIST ===== -->
+<div id="post-list-page">
+
+  <!-- HEADER -->
+  <header class="post-list-header">
+    <button class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></button>
+    <div class="header-divider"></div>
+    <span class="post-list-header-title page-label">my post</span>
+    <span class="post-list-count-badge" id="post-listCountBadge">{{ posts | length }} 件</span>
+  </header>
+
+  <!-- CONTENT -->
+  <div class="post-list-content" id="post-listContent">
+    {% if not posts %}
+    <div class="post-list-empty">
+      <i class="fa fa-pen post-list-empty-icon"></i>
+      <div class="post-list-empty-title">自分の投稿がまだありません</div>
+      <div class="post-list-empty-sub">新しいスポットを投稿してみましょう</div>
+      <a class="post-list-empty-btn" href="{{ url_for('post') }}">スポットを投稿する</a>
+    </div>
+    {% else %}
+    {% set pref_labels_jp = {'tokyo':'東京都','kanagawa':'神奈川県','saitama':'埼玉県','chiba':'千葉県','ibaraki':'茨城県','tochigi':'栃木県','gunma':'群馬県'} %}
+    {% set diff_labels = ['', '初級', '初中級', '中級', '上級', 'エキスパート'] %}
+    {% for post in posts %}
+    <div class="post-list-card" style="animation-delay: {{ loop.index0 * 60 }}ms;" data-post-id="{{ post.spot_id }}">
+      <div class="post-list-card-thumb">
+        {% if post.photo %}
+        <img src="/static/uploads/{{ post.photo }}" alt="{{ post.spot_name }}">
+        {% else %}
+        <div style="width:100%;height:100%;background:#1c1c1c;display:flex;align-items:center;justify-content:center;">
+          <i class="fa fa-image" style="font-size:28px;color:rgba(255,255,255,0.1);"></i>
+        </div>
+        {% endif %}
+        <div class="post-list-card-thumb-grad"></div>
+        
+      </div>
+      <div class="post-list-card-body">
+        <div class="post-list-card-top">
+          <div>
+            <div class="post-list-card-name">{{ post.spot_name }}</div>
+            <div class="post-list-card-loc"><i class="fa fa-map-marker-alt"></i> {{ post.location_name }}</div>
+          </div>
+        </div>
+        <div class="post-list-card-footer">
+          <span class="post-list-card-desc">{{ post.spot_desc or '説明がありません' }}</span>
+          <div class="post-list-card-select">
+            <div class="post-list-card-tags">
+              <div class="tag post-list-card-time {{ post.time_select }}">{{ post.time_select }}</div>
+              <div class="post-list-card-level">
+                {% if post.level %}
+                {% set diff_text = diff_labels[post.level] %}
+                <span class="tag tag-level {{ 'tag-beginner' if diff_text in ['初級','初中級'] else ('tag-expert' if diff_text in ['上級','エキスパート'] else '') }}">{{ diff_text }}</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="post-list-card-detail">
+              <div class="post-list-card-actions">
+                <i class="fa fa-gas-pump access-icon {{ 'ok' if 'gas' in post.equipment else 'ng' }}"></i>
+                <i class="fa fa-utensils access-icon {{ 'ok' if 'food' in post.equipment else 'ng' }}"></i>
+                <i class="fa fa-parking access-icon {{ 'ok' if 'parking' in post.equipment else 'ng' }}"></i>
+                <i class="fa fa-restroom access-icon {{ 'ok' if 'restroom' in post.equipment else 'ng' }}"></i>
+                <form method="post" action="{{ url_for('post_list') }}">
+                  <input type="hidden" name="spot_id" value="{{ post.spot_id }}">
+                  <button
+                    type="submit"
+                    class="post-list-card-remove-btn"
+                    data-post-id="{{ post.spot_id }}"
+                    title="編集"
+                  >
+                    <i class="fa fa-pen"></i>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+
+</div>
+
+<style>
+  .access-icon { font-size: 15px; }
+  .access-icon.ok { color: rgba(255,255,255,0.45); }
+  .access-icon.ng { color: rgba(255,255,255,0.12); }
+</style>
+
+
+<script>
+  function openDrawer() {
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawerOverlay').classList.add('open');
+  }
+  function closeDrawer() {
+    document.getElementById('drawer').classList.remove('open');
+    document.getElementById('drawerOverlay').classList.remove('open');
+  }
+</script>
+</body>
+</html>

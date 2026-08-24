@@ -1,0 +1,259 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>すきまけしき － unlock</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/home.css">
+  <link rel="stylesheet" href="/static/css/map.css">
+</head>
+<body>
+
+<!-- ===== DRAWER ===== -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<nav class="drawer" id="drawer">
+  <div class="drawer-logo">
+    <img src="/static/images/icon.png" alt="">
+    <div class="logo-name">sukima</div>
+    <div class="logo-sub">すきまけしき</div>
+  </div>
+  <div class="drawer-menu">
+    <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' else '' }}"><i class="fa fa-home"></i> home</a>
+    <a href="{{ url_for('post') }}" class="{{ 'active' if request.endpoint == 'post' else '' }}"><i class="fa fa-plus"></i> post</a>
+    <a href="{{ url_for('post_list') }}" class="{{ 'active' if request.endpoint == 'post_list' else '' }}"><i class="fa fa-pen"></i> My post</a>
+    <a href="{{ url_for('spots') }}" class="{{ 'active' if request.endpoint == 'spots' else '' }}"><i class="fa fa-search"></i> spots</a>
+    <a href="{{ url_for('favorite') }}" class="{{ 'active' if request.endpoint == 'favorite' else '' }}"><i class="fa fa-bookmark"></i> favorite</a>
+    <a href="{{ url_for('map') }}" class="{{ 'active' if request.endpoint == 'map' else '' }}"><i class="fa fa-unlock-alt"></i> unlock</a>
+    <div class="drawer-spacer"></div>
+    <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint == 'settings' else '' }}"><i class="fa fa-cog"></i> settings</a>
+    <a href="{{ url_for('logout') }}" class="drawer-logout"><i class="fa fa-sign-out-alt"></i> ログアウト</a>
+    <div class="drawer-ticket"><i class="fa fa-ticket"></i> チケット <span id="drawerTicketCount">{{ ticket_count }}</span>枚</div>
+  </div>
+</nav>
+
+<!-- ===== MAP PAGE ===== -->
+<div id="map-page" class="page active">
+
+  <header class="home-header">
+    <button class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></button>
+    <div class="header-divider"></div>
+    <span class="region-badge page-label">unlock</span>
+  </header>
+
+  <div class="map-body">
+
+    <!-- 左：SVGマップ -->
+    <div class="map-col">
+      <div class="map-title-row">
+        <h2 class="map-heading">エリアマップ</h2>
+        <span class="map-sub">エリアをタップしてチェックイン</span>
+      </div>
+
+      <div class="map-svg-wrap">
+        <!--
+          関東7都県 SVG マップ
+          ViewBox: 0 0 490 490
+          座標は地理的位置を近似した簡略化ポリゴン
+        -->
+        <svg viewBox="0 0 490 490" class="kanto-map" id="kantoMap">
+          <defs>
+            <!-- ロック済みのハッチパターン -->
+            <pattern id="lockPattern" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="8" stroke="rgba(255,255,255,0.04)" stroke-width="3"/>
+            </pattern>
+          </defs>
+
+          <!-- 群馬県 -->
+          <g class="pref-group" data-id="gunma" onclick="selectPref('gunma')">
+            <polygon
+              id="path-gunma"
+              class="pref-path locked"
+              points="10,10 165,10 178,148 156,222 86,228 10,218"
+            />
+            <text class="pref-label locked-label" id="label-gunma" x="88" y="125">
+              <tspan x="88" dy="0">群馬</tspan>
+            </text>
+            <text class="lock-icon" id="lock-gunma" x="88" y="155">🔒</text>
+          </g>
+
+          <!-- 栃木県 -->
+          <g class="pref-group" data-id="tochigi" onclick="selectPref('tochigi')">
+            <polygon
+              id="path-tochigi"
+              class="pref-path locked"
+              points="162,10 326,10 334,162 318,238 156,226 175,148"
+            />
+            <text class="pref-label locked-label" id="label-tochigi" x="242" y="120">
+              <tspan x="242" dy="0">栃木</tspan>
+            </text>
+            <text class="lock-icon" id="lock-tochigi" x="242" y="150">🔒</text>
+          </g>
+
+          <!-- 茨城県 -->
+          <g class="pref-group" data-id="ibaraki" onclick="selectPref('ibaraki')">
+            <polygon
+              id="path-ibaraki"
+              class="pref-path locked"
+              points="320,10 456,38 468,178 460,300 408,332 346,332 303,250 314,236 328,162"
+            />
+            <text class="pref-label locked-label" id="label-ibaraki" x="392" y="188">
+              <tspan x="392" dy="0">茨城</tspan>
+            </text>
+            <text class="lock-icon" id="lock-ibaraki" x="392" y="218">🔒</text>
+          </g>
+
+          <!-- 埼玉県 -->
+          <g class="pref-group" data-id="saitama" onclick="selectPref('saitama')">
+            <polygon
+              id="path-saitama"
+              class="pref-path locked"
+              points="10,216 86,228 156,224 318,238 322,252 298,336 164,346 38,330"
+            />
+            <text class="pref-label locked-label" id="label-saitama" x="172" y="285">
+              <tspan x="172" dy="0">埼玉</tspan>
+            </text>
+            <text class="lock-icon" id="lock-saitama" x="172" y="315">🔒</text>
+          </g>
+
+          <!-- 東京都（初期解除済み） -->
+          <g class="pref-group" data-id="tokyo" onclick="selectPref('tokyo')">
+            <polygon
+              id="path-tokyo"
+              class="pref-path unlocked"
+              style="fill:#b8943a"
+              points="162,342 298,332 308,398 278,416 226,422 160,405"
+            />
+            <text class="pref-label" id="label-tokyo" x="232" y="375">
+              <tspan x="232" dy="0">東京</tspan>
+            </text>
+            <text class="lock-icon" id="lock-gunma" x="88" y="155">🔒</text>
+          </g>
+
+          <!-- 千葉県 -->
+          <g class="pref-group" data-id="chiba" onclick="selectPref('chiba')">
+            <polygon
+              id="path-chiba"
+              class="pref-path locked"
+              points="296,248 460,296 476,372 460,452 400,472 338,454 292,414 308,398 298,336 302,252"
+            />
+            <text class="pref-label locked-label" id="label-chiba" x="390" y="375">
+              <tspan x="390" dy="0">千葉</tspan>
+            </text>
+            <text class="lock-icon" id="lock-chiba" x="390" y="405">🔒</text>
+          </g>
+
+          <!-- 神奈川県 -->
+          <g class="pref-group" data-id="kanagawa" onclick="selectPref('kanagawa')">
+            <polygon
+              id="path-kanagawa"
+              class="pref-path locked"
+              points="32,400 278,416 296,470 252,480 76,478 24,444"
+            />
+            <text class="pref-label locked-label" id="label-kanagawa" x="160" y="448">
+              <tspan x="160" dy="0">神奈川</tspan>
+            </text>
+            <text class="lock-icon" id="lock-kanagawa" x="160" y="468">🔒</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- 凡例 -->
+      <div class="map-legend">
+        <span class="legend-item">
+          <span class="legend-dot unlocked"></span>解除済み
+        </span>
+        <span class="legend-item">
+          <span class="legend-dot locked"></span>未解除
+        </span>
+      </div>
+
+      <!-- 都県パネル（マップ右下オーバーレイ） -->
+      <div class="pref-panel" id="prefPanel">
+        <div class="pref-select-hint" id="selectHint">
+          エリアを選択してください
+        </div>
+
+        <!-- 都県情報（JS で表示切替） -->
+        <div id="prefDetail" style="display:none; flex-direction:column; gap:16px;">
+
+          <div class="pref-header">
+            <div class="pref-name" id="detailName">—</div>
+            <div class="pref-status" id="detailStatus">—</div>
+          </div>
+
+          <div class="pref-stats">
+            <div class="stat-cell" id="statSpots">
+              <div class="stat-cell-label"><i class="fa fa-map-marker-alt"></i> スポット数</div>
+              <div class="stat-cell-value" id="valSpots">—</div>
+            </div>
+            <div class="stat-cell" id="statPosts">
+              <div class="stat-cell-label"><i class="fa fa-images"></i> 投稿数</div>
+              <div class="stat-cell-value" id="valPosts">—</div>
+            </div>
+            <div class="stat-cell" id="statRiders">
+              <div class="stat-cell-label"><i class="fa fa-user"></i> ライダー数</div>
+              <div class="stat-cell-value" id="valRiders">—</div>
+            </div>
+            <div class="stat-cell" id="statRoutes">
+              <div class="stat-cell-label"><i class="fa fa-route"></i> ルート数</div>
+              <div class="stat-cell-value" id="valRoutes">—</div>
+            </div>
+          </div>
+
+          <button class="btn-checkin" id="btnCheckin" onclick="doCheckin()">
+            <i class="fa fa-location-arrow" id="checkinIcon"></i>
+            <span id="checkinLabel">チェックイン</span>
+          </button>
+
+          <div class="checkin-date" id="checkinDate"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 右：情報パネル -->
+    <div class="info-col">
+
+      <!-- 駅名・地名検索 -->
+      <div class="area-search-wrap">
+        <div class="area-search-bar" id="areaSearchBar">
+          <i class="fa fa-search area-search-icon"></i>
+          <input class="area-search-input" id="areaSearchInput" type="text"
+                 placeholder="駅名・地名で検索（例：渋谷駅）"
+                 oninput="onAreaSearchInput()"
+                 onkeydown="if(event.key==='Enter'){event.preventDefault();doAreaSearch();}">
+          <button class="area-search-clear" id="areaSearchClear" onclick="clearAreaSearch()" style="display:none;">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+        <div class="area-suggestions" id="areaSuggestions"></div>
+      </div>
+
+      <!-- 解除進捗 -->
+      <div class="unlock-progress">
+        <div class="progress-label"><i class="fa fa-unlock-alt"></i> 解除進捗 — 関東</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+        </div>
+        <div class="progress-text" id="progressText">0 / 7 エリア解除</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- トースト通知 -->
+<div class="unlock-toast" id="unlockToast"></div>
+
+<script>
+  window.MAP_CONFIG = {
+    unlocked: {{ unlocked | tojson }},
+    checkins: {{ checkins | tojson }},
+    ticketCount: {{ ticket_count | tojson }}
+  };
+</script>
+<script src="/static/js/map.js"></script>
+</body>
+</html>

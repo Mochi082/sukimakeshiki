@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>すきまけしき － 新規登録</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/login.css">
+  <link rel="stylesheet" href="/static/css/sign.css">
+</head>
+<body class="sign-page">
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash-area">
+        {% for message in messages %}
+          <div class="flash-message">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+  
+<div id="signin-page" class="page active signin-page">
+  
+  <!-- 背景 -->
+  <div class="login-bg"></div>
+  <div class="login-overlay"></div>
+
+  <!-- 登録カード -->
+  <div class="signin-wrap">
+    <div class="signin-card">
+
+      <h2 class="signin-title">新規登録</h2>
+      <p class="signin-sub">すきまけしきに参加して<br>最高の景色を共有しよう</p>
+
+      <form method="POST" action="{{ url_for('signup') }}" novalidate>
+
+        <!-- ユーザー名 -->
+        <div class="form-group">
+          <label class="form-label" for="user_name">ユーザー名</label>
+          <input
+            class="form-input"
+            type="text"
+            id="user_name"
+            name="user_name"
+            value="{{ user_name or '' }}"
+            placeholder="例：yamada_rider"
+            autocomplete="user_name"
+          >
+        </div>
+
+        <!-- メールアドレス -->
+        <div class="form-group">
+          <label class="form-label" for="email">メールアドレス</label>
+          <input
+            class="form-input"
+            type="email"
+            id="email"
+            name="email"
+            value="{{ email or '' }}"
+            placeholder="example@email.com"
+            autocomplete="email"
+          >
+        </div>
+
+        <!-- パスワード -->
+        <div class="form-group">
+          <label class="form-label" for="password">パスワード</label>
+          <div class="input-wrap">
+            <input
+              class="form-input"
+              type="password"
+              id="password"
+              name="password"
+              placeholder="8文字以上で入力"
+              autocomplete="new-password"
+            >
+            <button type="button" class="toggle-pw" onclick="togglePassword('password','pw-icon')" aria-label="パスワード表示切替">
+              <i class="fa fa-eye" id="pw-icon"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- パスワード確認 -->
+        <div class="form-group">
+          <label class="form-label" for="password2">パスワード（確認）</label>
+          <div class="input-wrap">
+            <input
+              class="form-input"
+              type="password"
+              id="password2"
+              name="password2"
+              placeholder="もう一度入力"
+              autocomplete="new-password"
+
+            >
+            <button type="button" class="toggle-pw" onclick="togglePassword('password2','pw2-icon')" aria-label="パスワード表示切替">
+              <i class="fa fa-eye" id="pw2-icon"></i>
+            </button>
+          </div>
+          <div class="pw-match-msg" id="pwMatchMsg"></div>
+        </div>
+
+        <!-- ガレージ情報 -->
+        <div class="form-section-sep">
+          <span>バイク情報</span>
+        </div>
+
+        <div class="form-group">
+          <div class="selectbox">
+            <label class="form-label" for="activity_time">種類</label>
+            <input type="hidden" name="bike_type" id="bike_type" value="{{ bike_type or 'default' }}">
+            <button type="button" class="select-button" id="selectButton">
+              選択
+            </button>
+            <ul>
+                <li data-value="ストリート">ストリート</li>
+                <li data-value="オールドルック">オールドルック</li>
+                <li data-value="ミニバイク">ミニバイク</li>
+                <li data-value="ネイキッド">ネイキッド</li>
+                <li data-value="スポーツ/レプリカ">スポーツ/レプリカ</li>
+                <li data-value="オフロード">オフロード</li>
+                <li data-value="スクーター(51cc以上)">スクーター(51cc以上)</li>
+                <li data-value="スクーター(50cc以下)">スクーター(50cc以下)</li>
+                <li data-value="ツアラー">ツアラー</li>
+                <li data-value="アドベンチャー">アドベンチャー</li>
+                <li data-value="スクランブラー">スクランブラー</li>
+                <li data-value="コンペティション">コンペティション</li>
+                <li data-value="トライク">トライク</li>
+                <li data-value="EV">EV</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="bike_name">車体名</label>
+          <input
+            class="form-input"
+            type="text"
+            id="bike_name"
+            name="bike_name"
+            value="{{ bike_name or '' }}"
+            placeholder="例：CB400SF"
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="bike_power">排気量</label>
+          <div class="engine_cc">
+            <input
+              class="form-input"
+              type="text"
+              id="bike_power"
+              name="bike_power"
+              value="{{ bike_power or '' }}"
+              placeholder="例：400"
+            >
+            <span class="cc">㏄</span>
+          </div>
+        </div> 
+        <div class="form-group">
+          <div class="selectbox">
+            <label class="form-label" for="activity_time">活動時間帯</label>
+            <input type="hidden" name="activity_time" id="activity_time" value="{{ active_time or 'default' }}">
+            <button type="button" class="select-button" id="selectButton">
+              選択
+            </button>
+            <ul id="activity_time" name="activity_time">
+                <li data-value="morning">morning</li>
+                <li data-value="day">midday</li>
+                <li data-value="evening">evening</li>
+                <li data-value="night">night</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 利用規約 -->
+        <label class="terms-check">
+          <input type="checkbox" id="termsCheck">
+          <span><a href="#" class="terms-link">利用規約</a>・<a href="#" class="terms-link">プライバシーポリシー</a>に同意する</span>
+        </label>
+
+        <!-- 登録ボタン -->
+        <button type="submit" class="btn-signin" onclick="doRegister()">
+          アカウントを作成
+        </button>
+      </form>
+
+      <!-- 区切り -->
+      <div class="signin-divider"><span>または</span></div>
+
+      <!-- ログインリンク -->
+      <p class="signup-link">
+        すでにアカウントをお持ちの方は
+        <a href="{{ url_for('index') }}">ログインはこちら</a>
+      </p>
+    </div>
+  </div>
+
+
+<script>
+document.querySelectorAll(".selectbox").forEach(selectbox => {
+
+    const button = selectbox.querySelector(".select-button");
+    const hiddenInput = selectbox.querySelector('input[type="hidden"]');
+    const options = selectbox.querySelector("ul");
+
+    button.addEventListener("click", () => {
+        selectbox.classList.toggle("open");
+    });
+
+    options.querySelectorAll("li").forEach(option => {
+        option.addEventListener("click", () => {
+            button.textContent = option.textContent;
+            hiddenInput.value = option.dataset.value;
+            selectbox.classList.remove("open");
+        });
+    });
+
+});
+</script>
+
+</div>
+</body>
+</html>

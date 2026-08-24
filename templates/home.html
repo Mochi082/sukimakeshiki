@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>すきまけしき</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/home.css">
+</head>
+<body>
+
+<!-- ===== DRAWER ===== -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<nav class="drawer" id="drawer">
+  <div class="drawer-logo">
+    <img src="/static/images/icon.png" alt="">
+    <div class="logo-name">sukima</div>
+    <div class="logo-sub">すきまけしき</div>
+  </div>
+  <div class="drawer-menu">
+    <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' else '' }}"><i class="fa fa-home"></i> home</a>
+    <a href="{{ url_for('post') }}" class="{{ 'active' if request.endpoint == 'post' else '' }}"><i class="fa fa-plus"></i> post</a>
+    <a href="{{ url_for('post_list') }}" class="{{ 'active' if request.endpoint == 'post_list' else '' }}"><i class="fa fa-pen"></i> My post</a>
+    <a href="{{ url_for('spots') }}" class="{{ 'active' if request.endpoint == 'spots' else '' }}"><i class="fa fa-search"></i> spots</a>
+    <a href="{{ url_for('favorite') }}" class="{{ 'active' if request.endpoint == 'favorite' else '' }}"><i class="fa fa-bookmark"></i> favorite</a>
+    <a href="{{ url_for('map') }}" class="{{ 'active' if request.endpoint == 'map' else '' }}"><i class="fa fa-unlock-alt"></i> unlock</a>
+    <div class="drawer-spacer"></div>
+    <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint == 'settings' else '' }}"><i class="fa fa-cog"></i> settings</a>
+    <a href="{{ url_for('logout') }}" class="drawer-logout"><i class="fa fa-sign-out-alt"></i> ログアウト</a>
+    <div class="drawer-ticket"><i class="fa fa-ticket"></i> チケット <span id="drawerTicketCount">{{ ticket_count }}</span>枚</div>
+  </div>
+</nav>
+
+<!-- ===== HOME PAGE ===== -->
+<div id="home-page" class="page active">
+  <header class="home-header">
+    <button class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></button>
+    <div class="header-divider"></div>
+    <span class="region-badge">home</span>
+  </header>
+
+  <div class="welcome-banner">
+    <img class="banner-img" src="/static/images/small.png" alt="">
+    <div class="banner-grad"></div>
+    <div class="welcome-text">W e l c o m e</div>
+  </div>
+
+  <div class="home-body">
+    <div class="left-col">
+
+      <!-- Resources -->
+      <div class="resources-section">
+        <div class="section-title">Resources</div>
+        <div class="resources-row">
+          <a class="res-item" href="{{ url_for('post') }}">
+            <div class="res-icon"><i class="fa fa-plus"></i></div>
+            <span class="res-label">Post</span>
+          </a>
+          <a class="res-item" href="{{ url_for('post_list') }}">
+            <div class="res-icon"><i class="fa fa-pen"></i></div>
+            <span class="res-label">My Post</span>
+          </a>
+          <a class="res-item" href="{{ url_for('spots') }}">
+            <div class="res-icon"><i class="fa fa-search"></i></div>
+            <span class="res-label">Spots</span>
+          </a>
+          <a class="res-item" href="{{ url_for('favorite') }}">
+            <div class="res-icon"><i class="fa fa-bookmark"></i></div>
+            <span class="res-label">favorite</span>
+          </a>
+          <a class="res-item" href="{{ url_for('map') }}">
+            <div class="res-icon"><i class="fa fa-key"></i></div>
+            <span class="res-label">Unlock</span>
+          </a>
+          <a class="res-item" href="{{ url_for('settings') }}">
+            <div class="res-icon"><i class="fa fa-cog"></i></div>
+            <span class="res-label">Setting</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Information -->
+      <div class="info-section">
+        <div class="info-head">
+          <div class="section-title">Information</div>
+          <span class="info-more">もっと見る</span>
+        </div>
+        <div class="info-list">
+          <div class="info-row">
+            <div class="info-date">2025.4.20</div>
+            <div class="info-title">→ 【キャンペーン】友達招待キャンペーン</div>
+          </div>
+          <div class="info-row">
+            <div class="info-date">2025.4.20</div>
+            <div class="info-title">→ 【機能紹介】新シーズンの準備！メンテナンス記録</div>
+          </div>
+          <div class="info-row">
+            <div class="info-date">2025.4.20</div>
+            <div class="info-title">→ 【重要】定期メンテナンスのお知らせ</div>
+          </div>
+          <div class="info-row">
+            <div class="info-date">2025.4.20</div>
+            <div class="info-title">→ 【アップデート】Ver.1.0.2アップデートのお知らせ</div>
+          </div>
+          <div class="info-row">
+            <div class="info-date">2025.4.20</div>
+            <div class="info-title">→ 【重要】安全な利用に関する注意喚起</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Garage -->
+    <div class="right-col">
+      <div class="section-title">Garage</div>
+      <div class="garage-card">
+        <div class="garage-bike-wrap">
+          <img src="/static/images/icon.png" alt="バイク">
+        </div>
+        <div class="garage-fields">
+          <div class="garage-row">
+            <span class="garage-label">種類</span>
+            <span class="garage-value">{{ bike_type or '—' }}</span>
+          </div>
+          <div class="garage-row">
+            <span class="garage-label">車体名</span>
+            <span class="garage-value">{{ bike_name or '—' }}</span>
+          </div>
+          <div class="garage-row">
+            <span class="garage-label">排気量</span>
+            <span class="garage-value">{{ bike_power or '—' }}</span>
+          </div>
+          <div class="garage-row">
+            <span class="garage-label">活動時間</span>
+            <span class="garage-value">{{ active_time or '—' }}</span>
+          </div>
+        </div>
+        <a class="garage-edit-link" href="{{ url_for('settings') }}">
+          <i class="fa fa-pen"></i> 編集
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/home.js"></script>
+</body>
+</html>

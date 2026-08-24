@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>すきまけしき</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <style>
+    .lock-marker {
+      font-size: 13px;
+      line-height: 36px;
+      text-align: center;
+      opacity: 0.3;
+      pointer-events: none;
+    }
+    .locked-overlay {
+      pointer-events: none;
+    }
+
+    /* ── マップ全画面拡大 ── */
+    .map-panel.expanded {
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      width: 100% !important;
+      height: 100dvh;
+      background: #111;
+    }
+    .map-panel.expanded .map-sticky {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .map-panel.expanded .map-frame {
+      flex: 1;
+      min-height: 0;
+    }
+    .map-panel.expanded #leaflet-map {
+      height: 100% !important;
+    }
+    .map-panel.expanded .map-selected {
+      display: none;
+    }
+    .map-expand-btn {
+      cursor: pointer;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.7);
+      border-radius: 6px;
+      padding: 5px 9px;
+      font-size: 13px;
+      transition: background 0.2s, color 0.2s;
+    }
+    .map-expand-btn:hover {
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== DRAWER ===== -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<nav class="drawer" id="drawer">
+  <div class="drawer-logo">
+    <img src="/static/images/icon.png" alt="">
+    <div class="logo-name">sukima</div>
+    <div class="logo-sub">すきまけしき</div>
+  </div>
+  <div class="drawer-menu">
+    <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' else '' }}"><i class="fa fa-home"></i> home</a>
+    <a href="{{ url_for('post') }}" class="{{ 'active' if request.endpoint in ('post', 'post_edit') else '' }}"><i class="fa fa-plus"></i> post</a>
+    <a href="{{ url_for('post_list') }}" class="{{ 'active' if request.endpoint == 'post_list' else '' }}"><i class="fa fa-pen"></i> My post</a>
+    <a href="{{ url_for('spots') }}" class="{{ 'active' if request.endpoint == 'spots' else '' }}"><i class="fa fa-search"></i> spots</a>
+    <a href="{{ url_for('favorite') }}" class="{{ 'active' if request.endpoint == 'favorite' else '' }}"><i class="fa fa-bookmark"></i> favorite</a>
+    <a href="{{ url_for('map') }}" class="{{ 'active' if request.endpoint == 'map' else '' }}"><i class="fa fa-unlock-alt"></i> unlock</a>
+    <div class="drawer-spacer"></div>
+    <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint == 'settings' else '' }}"><i class="fa fa-cog"></i> settings</a>
+    <a href="{{ url_for('logout') }}" class="drawer-logout"><i class="fa fa-sign-out-alt"></i> ログアウト</a>
+    <div class="drawer-ticket"><i class="fa fa-ticket"></i> チケット <span id="drawerTicketCount">{{ ticket_count }}</span>枚</div>
+  </div>
+</nav>
+
+<!-- ===== MAIN PAGE ===== -->
+<div id="main-page" class="page active">
+
+  <!-- HEADER -->
+  <header class="main-header">
+    <button class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></button>
+    <div class="header-divider"></div>
+
+    <!-- 検索バー -->
+    <div class="area-select-wrap" id="areaSelectWrap">
+      <div class="search-bar-wrap" id="searchBarWrap">
+        <div class="search-segment" onclick="toggleAreaDropdown(event)">
+          <i class="fa fa-map-marker-alt seg-icon"></i>
+          <div class="seg-body">
+            <div class="seg-label">エリア</div>
+            <div class="seg-value" id="areaSelDisplay">すべて</div>
+          </div>
+          <i class="fa fa-chevron-down area-chevron" id="areaChevron"></i>
+        </div>
+        <button class="search-exec-btn"><i class="fa fa-search"></i></button>
+      </div>
+      <div class="area-dropdown-panel" id="areaDropdownPanel"></div>
+    </div>
+  </header>
+
+  <!-- 検索バー（固定） -->
+  <div class="map-search-overlay">
+    <div class="map-search-bar" id="mapSearchBar">
+      <i class="fa fa-search map-search-icon"></i>
+      <input class="map-search-input" id="mapSearchInput" type="text"
+             placeholder="駅名・地名で検索"
+             oninput="onMapSearchInput()"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();doMapSearch();}">
+      <button class="map-search-clear" id="mapSearchClear" onclick="clearMapSearch()" style="display:none;">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="map-search-suggestions" id="mapSearchSuggestions"></div>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="main-layout">
+
+    <!-- パネル開閉ボタン（パネル外に配置） -->
+    <button class="panel-toggle-btn" id="panelToggleBtn" onclick="toggleSpotsPanel()" title="パネルを閉じる">
+      <i class="fa fa-chevron-left" id="panelToggleIcon"></i>
+    </button>
+
+    <!-- ===== FLOATING SPOTS PANEL ===== -->
+    <div class="spots-float-panel" id="spotsFloatPanel">
+
+      <!-- SORT BAR -->
+      <div class="sort-bar">
+        <button class="sort-tab active">おすすめ順</button>
+        <button class="sort-tab">評価が高い順</button>
+        <button class="sort-tab">距離が近い順</button>
+        <button class="sort-tab">お気に入り数順</button>
+        <div class="view-toggles">
+          <button class="view-btn active" title="リスト表示"><i class="fa fa-list"></i></button>
+          <button class="view-btn" title="グリッド表示"><i class="fa fa-th-large"></i></button>
+        </div>
+      </div>
+
+      <!-- SPOT LIST -->
+      <section class="spot-list">
+
+      <!-- ── カード 1 ── -->
+      <div class="spot-card" data-prefecture="tokyo" data-spot-id="spot-001">
+        <div class="card-thumb">
+          <img src="/static/images/spots01.png" alt="旧岩崎邸庭園">
+          <div class="card-thumb-grad"></div>
+          <button class="fav-btn"><i class="fa fa-bookmark"></i></button>
+          <div class="card-tags">
+            <span class="tag tag-terrain">歴史・洋館</span>
+            <span class="tag tag-level tag-beginner">初級</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <div>
+              <div class="card-name">旧岩崎邸庭園</div>
+              <div class="card-location"><i class="fa fa-map-marker-alt"></i> 東京都 台東区</div>
+            </div>
+            <div class="card-rating-wrap">
+              <div class="card-rating">4.6</div>
+              <div class="card-rating-label">優秀</div>
+              <div class="card-review-count">1,842件</div>
+            </div>
+          </div>
+          <div class="card-desc">
+            明治の実業家・岩崎弥太郎邸。ジョサイア・コンドル設計の洋館と日本庭園が共存する都内屈指の名所。
+          </div>
+          <div class="card-meta">
+            <div class="meta-item"><i class="fa fa-road"></i> 約 8 km</div>
+            <div class="meta-item"><i class="fa fa-clock"></i> 約 0.5 h</div>
+            <div class="meta-item"><i class="fa fa-heart"></i> 4,210</div>
+          </div>
+          <div class="card-footer">
+            <div class="card-access">
+              <i class="fa fa-gas-pump access-icon ng"></i>
+              <i class="fa fa-utensils access-icon ok"></i>
+              <i class="fa fa-parking access-icon ng"></i>
+              <i class="fa fa-restroom access-icon ok"></i>
+            </div>
+            <button class="card-detail-btn">詳しく見る <i class="fa fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── カード 2 ── -->
+      <div class="spot-card" data-prefecture="tokyo" data-spot-id="spot-002">
+        <div class="card-thumb">
+          <img src="/static/images/spots02.png" alt="不忍池">
+          <div class="card-thumb-grad"></div>
+          <button class="fav-btn"><i class="fa fa-bookmark"></i></button>
+          <div class="card-tags">
+            <span class="tag tag-terrain">池・自然</span>
+            <span class="tag tag-level tag-beginner">初級</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <div>
+              <div class="card-name">不忍池</div>
+              <div class="card-location"><i class="fa fa-map-marker-alt"></i> 東京都 台東区</div>
+            </div>
+            <div class="card-rating-wrap">
+              <div class="card-rating">4.4</div>
+              <div class="card-rating-label">良好</div>
+              <div class="card-review-count">3,105件</div>
+            </div>
+          </div>
+          <div class="card-desc">
+            上野恩賜公園に隣接する都会のオアシス。夏の蓮の花が一面に広がる景色はライダーの間でも人気。
+          </div>
+          <div class="card-meta">
+            <div class="meta-item"><i class="fa fa-road"></i> 約 5 km</div>
+            <div class="meta-item"><i class="fa fa-clock"></i> 約 0.3 h</div>
+            <div class="meta-item"><i class="fa fa-heart"></i> 6,780</div>
+          </div>
+          <div class="card-footer">
+            <div class="card-access">
+              <i class="fa fa-gas-pump access-icon ng"></i>
+              <i class="fa fa-utensils access-icon ok"></i>
+              <i class="fa fa-parking access-icon ok"></i>
+              <i class="fa fa-restroom access-icon ok"></i>
+            </div>
+            <button class="card-detail-btn">詳しく見る <i class="fa fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── カード 3 ── -->
+      <div class="spot-card" data-prefecture="tokyo" data-spot-id="spot-003">
+        <div class="card-thumb">
+          <img src="/static/images/spots03.png" alt="竹林公園">
+          <div class="card-thumb-grad"></div>
+          <button class="fav-btn"><i class="fa fa-bookmark"></i></button>
+          <div class="card-tags">
+            <span class="tag tag-terrain">竹林・散策</span>
+            <span class="tag tag-level tag-beginner">初級</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <div>
+              <div class="card-name">竹林公園</div>
+              <div class="card-location"><i class="fa fa-map-marker-alt"></i> 東京都</div>
+            </div>
+            <div class="card-rating-wrap">
+              <div class="card-rating">4.3</div>
+              <div class="card-rating-label">良好</div>
+              <div class="card-review-count">892件</div>
+            </div>
+          </div>
+          <div class="card-desc">
+            石畳と竹林が続く静寂のスポット。喧騒を離れたい時に立ち寄りたい隠れた穴場。
+          </div>
+          <div class="card-meta">
+            <div class="meta-item"><i class="fa fa-road"></i> 約 10 km</div>
+            <div class="meta-item"><i class="fa fa-clock"></i> 約 0.5 h</div>
+            <div class="meta-item"><i class="fa fa-heart"></i> 2,340</div>
+          </div>
+          <div class="card-footer">
+            <div class="card-access">
+              <i class="fa fa-gas-pump access-icon ng"></i>
+              <i class="fa fa-utensils access-icon ng"></i>
+              <i class="fa fa-parking access-icon ok"></i>
+              <i class="fa fa-restroom access-icon ok"></i>
+            </div>
+            <button class="card-detail-btn">詳しく見る <i class="fa fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── カード 4 ── -->
+      <div class="spot-card" data-prefecture="tokyo" data-spot-id="spot-004">
+        <div class="card-thumb">
+          <img src="/static/images/spots04.png" alt="清澄庭園">
+          <div class="card-thumb-grad"></div>
+          <button class="fav-btn"><i class="fa fa-bookmark"></i></button>
+          <div class="card-tags">
+            <span class="tag tag-terrain">日本庭園</span>
+            <span class="tag tag-level tag-beginner">初級</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <div>
+              <div class="card-name">清澄庭園</div>
+              <div class="card-location"><i class="fa fa-map-marker-alt"></i> 東京都 江東区</div>
+            </div>
+            <div class="card-rating-wrap">
+              <div class="card-rating">4.5</div>
+              <div class="card-rating-label">優秀</div>
+              <div class="card-review-count">2,214件</div>
+            </div>
+          </div>
+          <div class="card-desc">
+            回遊式林泉庭園の名園。大泉水を中心に全国の銘石が配された明治の名庭。都内随一の静けさ。
+          </div>
+          <div class="card-meta">
+            <div class="meta-item"><i class="fa fa-road"></i> 約 12 km</div>
+            <div class="meta-item"><i class="fa fa-clock"></i> 約 0.5 h</div>
+            <div class="meta-item"><i class="fa fa-heart"></i> 5,120</div>
+          </div>
+          <div class="card-footer">
+            <div class="card-access">
+              <i class="fa fa-gas-pump access-icon ng"></i>
+              <i class="fa fa-utensils access-icon ok"></i>
+              <i class="fa fa-parking access-icon ng"></i>
+              <i class="fa fa-restroom access-icon ok"></i>
+            </div>
+            <button class="card-detail-btn">詳しく見る <i class="fa fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── カード 5 ── -->
+      <div class="spot-card" data-prefecture="tokyo" data-spot-id="spot-005">
+        <div class="card-thumb">
+          <img src="/static/images/spots05.png" alt="等々力渓谷">
+          <div class="card-thumb-grad"></div>
+          <button class="fav-btn"><i class="fa fa-bookmark"></i></button>
+          <div class="card-tags">
+            <span class="tag tag-terrain">渓谷・自然</span>
+            <span class="tag tag-level tag-beginner">初級</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <div>
+              <div class="card-name">等々力渓谷</div>
+              <div class="card-location"><i class="fa fa-map-marker-alt"></i> 東京都 世田谷区</div>
+            </div>
+            <div class="card-rating-wrap">
+              <div class="card-rating">4.7</div>
+              <div class="card-rating-label">優秀</div>
+              <div class="card-review-count">4,630件</div>
+            </div>
+          </div>
+          <div class="card-desc">
+            都内唯一の渓谷。緑深い谷底を流れる矢沢川と赤い橋が織りなす景観は、ここが東京とは思えない別世界。
+          </div>
+          <div class="card-meta">
+            <div class="meta-item"><i class="fa fa-road"></i> 約 20 km</div>
+            <div class="meta-item"><i class="fa fa-clock"></i> 約 0.8 h</div>
+            <div class="meta-item"><i class="fa fa-heart"></i> 9,450</div>
+          </div>
+          <div class="card-footer">
+            <div class="card-access">
+              <i class="fa fa-gas-pump access-icon ng"></i>
+              <i class="fa fa-utensils access-icon ok"></i>
+              <i class="fa fa-parking access-icon ng"></i>
+              <i class="fa fa-restroom access-icon ok"></i>
+            </div>
+            <button class="card-detail-btn">詳しく見る <i class="fa fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── カード 6 ── -->
+      <div class="spot-card" data-prefecture="tokyo" data-spot-id="spot-006">
+        <div class="card-thumb">
+          <img src="/static/images/spots06.png" alt="小石川後楽園">
+          <div class="card-thumb-grad"></div>
+          <button class="fav-btn"><i class="fa fa-bookmark"></i></button>
+          <div class="card-tags">
+            <span class="tag tag-terrain">紅葉・庭園</span>
+            <span class="tag tag-level tag-beginner">初級</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <div>
+              <div class="card-name">小石川後楽園</div>
+              <div class="card-location"><i class="fa fa-map-marker-alt"></i> 東京都 文京区</div>
+            </div>
+            <div class="card-rating-wrap">
+              <div class="card-rating">4.8</div>
+              <div class="card-rating-label">最高</div>
+              <div class="card-review-count">3,870件</div>
+            </div>
+          </div>
+          <div class="card-desc">
+            江戸初期に水戸徳川家が造営した大名庭園。秋の紅葉と池の水面に映る東京ドームの対比が圧巻。
+          </div>
+          <div class="card-meta">
+            <div class="meta-item"><i class="fa fa-road"></i> 約 15 km</div>
+            <div class="meta-item"><i class="fa fa-clock"></i> 約 0.6 h</div>
+            <div class="meta-item"><i class="fa fa-heart"></i> 8,920</div>
+          </div>
+          <div class="card-footer">
+            <div class="card-access">
+              <i class="fa fa-gas-pump access-icon ng"></i>
+              <i class="fa fa-utensils access-icon ok"></i>
+              <i class="fa fa-parking access-icon ng"></i>
+              <i class="fa fa-restroom access-icon ok"></i>
+            </div>
+            <button class="card-detail-btn">詳しく見る <i class="fa fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ページネーション -->
+      <div class="pagination">
+        <button class="page-btn disabled"><i class="fa fa-chevron-left"></i></button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn disabled"><i class="fa fa-chevron-right"></i></button>
+      </div>
+    </section>
+
+    </div><!-- /.spots-float-panel -->
+
+    <!-- ===== RIGHT: MAP ===== -->
+    <div class="map-panel">
+      <div class="map-sticky">
+        <div class="map-header">
+          <span class="map-title page-label"><i class="fa fa-map"></i> area map</span>
+          <button class="map-expand-btn" onclick="toggleMapExpand()"><i class="fa fa-expand-alt"></i></button>
+        </div>
+        <div class="map-frame">
+          <div id="leaflet-map"></div>
+
+
+          <!-- マップ右下オーバーレイ: 選択中スポット -->
+          <div class="map-selected">
+          <div class="map-selected-label">選択中のスポット</div>
+          <div class="map-selected-card">
+            <img src="/static/images/home-image.png" alt="">
+            <div class="map-selected-info">
+              <div class="map-sel-name">乗鞍スカイライン 全線制覇</div>
+              <div class="map-sel-loc"><i class="fa fa-map-marker-alt"></i> 長野県 松本市</div>
+              <div class="map-sel-rating"><span class="map-sel-score">4.9</span> <span class="map-sel-stars">★★★★★</span></div>
+            </div>
+          </div>
+          </div><!-- /.map-selected -->
+        </div><!-- /.map-frame -->
+      </div><!-- /.map-sticky -->
+    </div><!-- /.map-panel -->
+
+  </div>
+</div>
+
+<!-- ===== SPOT DETAIL MODAL ===== -->
+<div class="spot-modal-overlay" id="spotModalOverlay" onclick="closeSpotModal()"></div>
+<div class="spot-modal" id="spotModal">
+  <button class="spot-modal-close" onclick="closeSpotModal()"><i class="fa fa-times"></i></button>
+  <div class="spot-modal-thumb">
+    <img id="modalImg" src="" alt="">
+    <div class="spot-modal-thumb-grad"></div>
+    <div class="spot-modal-tags" id="modalTags"></div>
+  </div>
+  <div class="spot-modal-body">
+    <div class="spot-modal-top">
+      <div>
+        <div class="spot-modal-name" id="modalName"></div>
+        <div class="spot-modal-loc" id="modalLoc"></div>
+      </div>
+      <div class="spot-modal-rating-wrap">
+        <div class="spot-modal-rating" id="modalRating"></div>
+        <div class="spot-modal-rating-label" id="modalRatingLabel"></div>
+        <div class="spot-modal-review" id="modalReview"></div>
+      </div>
+    </div>
+    <div class="spot-modal-desc" id="modalDesc"></div>
+    <div class="spot-modal-meta" id="modalMeta"></div>
+    <div class="spot-modal-footer">
+      <div class="spot-modal-access" id="modalAccess"></div>
+      <button class="spot-modal-fav" id="modalFav" onclick="toggleModalFav()">
+        <i class="fa fa-bookmark"></i> お気に入り
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  /* ── マップ拡大／縮小 ── */
+  let leafletMap = null;
+  const markerMap = {}; // spotId → { marker, sp }
+
+  function toggleMapExpand() {
+    const panel = document.querySelector('.map-panel');
+    const btn   = document.querySelector('.map-expand-btn i');
+    const expanded = panel.classList.toggle('expanded');
+
+    btn.className = expanded ? 'fa fa-compress-alt' : 'fa fa-expand-alt';
+
+    // Leaflet にサイズ変更を通知（少し遅らせてDOMが確定してから）
+    if (leafletMap) {
+      setTimeout(() => leafletMap.invalidateSize(), 50);
+    }
+
+    // ESC キーで閉じられるように
+    if (expanded) {
+      document.addEventListener('keydown', closeOnEsc);
+    } else {
+      document.removeEventListener('keydown', closeOnEsc);
+    }
+  }
+
+  function closeOnEsc(e) {
+    if (e.key === 'Escape') toggleMapExpand();
+  }
+
+
+  /* ── Spots Panel Toggle ── */
+  function toggleSpotsPanel() {
+    const panel = document.getElementById('spotsFloatPanel');
+    const btn   = document.getElementById('panelToggleBtn');
+    const collapsed = panel.classList.toggle('collapsed');
+    btn.classList.toggle('collapsed', collapsed);
+    btn.title = collapsed ? 'パネルを開く' : 'パネルを閉じる';
+    if (leafletMap) setTimeout(() => leafletMap.invalidateSize(), 360);
+  }
+
+  /* ── Drawer ── */
+  function openDrawer() {
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawerOverlay').classList.add('open');
+  }
+  function closeDrawer() {
+    document.getElementById('drawer').classList.remove('open');
+    document.getElementById('drawerOverlay').classList.remove('open');
+  }
+
+  /* ── Distance slider ── */
+  const slider = document.getElementById('distSlider');
+  const distVal = document.getElementById('distVal');
+  if (slider) slider.addEventListener('input', () => { distVal.textContent = slider.value; });
+
+  /* ── Sort tabs ── */
+  document.querySelectorAll('.sort-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.sort-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  /* ── View toggles ── */
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  /* ── お気に入り localStorage ── */
+  const FAV_KEY = 'sk_favorites';
+
+  function getFavs() {
+    try { return JSON.parse(localStorage.getItem(FAV_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function saveFav(spotId, data) {
+    const favs = getFavs().filter(f => f.id !== spotId);
+    favs.unshift({ id: spotId, ...data, savedAt: new Date().toISOString() });
+    localStorage.setItem(FAV_KEY, JSON.stringify(favs));
+  }
+
+  function removeFav(spotId) {
+    const favs = getFavs().filter(f => f.id !== spotId);
+    localStorage.setItem(FAV_KEY, JSON.stringify(favs));
+  }
+
+  function extractSpotData(card) {
+    const img      = card.querySelector('.card-thumb img');
+    const tags     = [...card.querySelectorAll('.card-tags .tag')].map(t => ({ text: t.textContent.trim(), cls: t.className }));
+    const metas    = [...card.querySelectorAll('.meta-item')].map(m => m.textContent.trim());
+    const access   = [...card.querySelectorAll('.access-icon')].map(ic => ({ cls: ic.className }));
+    return {
+      name:        card.querySelector('.card-name')?.textContent.trim() || '',
+      location:    card.querySelector('.card-location')?.textContent.trim() || '',
+      rating:      card.querySelector('.card-rating')?.textContent.trim() || '',
+      ratingLabel: card.querySelector('.card-rating-label')?.textContent.trim() || '',
+      reviewCount: card.querySelector('.card-review-count')?.textContent.trim() || '',
+      desc:        card.querySelector('.card-desc')?.textContent.trim() || '',
+      img:         img?.src || '',
+      pref:        card.dataset.prefecture || '',
+      tags, metas, access,
+    };
+  }
+
+  function initFavButtons() {
+    const favIds = getFavs().map(f => f.id);
+    document.querySelectorAll('.spot-card[data-spot-id]').forEach(card => {
+      const spotId = card.dataset.spotId;
+      const btn = card.querySelector('.fav-btn');
+      if (!btn) return;
+      if (favIds.includes(spotId)) btn.classList.add('active');
+      btn.addEventListener('click', () => {
+        const isActive = btn.classList.toggle('active');
+        if (isActive) saveFav(spotId, extractSpotData(card));
+        else removeFav(spotId);
+      });
+    });
+  }
+
+  /* ── エリア解除フィルター ── */
+  function getUnlocked() {
+    try { return JSON.parse(localStorage.getItem('sk_unlocked')) || ['tokyo']; }
+    catch { return ['tokyo']; }
+  }
+
+  const PREF_ID_TO_NAME = {
+    gunma: '群馬県', tochigi: '栃木県', ibaraki: '茨城県',
+    saitama: '埼玉県', tokyo: '東京都', chiba: '千葉県', kanagawa: '神奈川県',
+  };
+
+  /* カスタムドロップダウン */
+  let _selectedArea = '';
+
+  function buildAreaDropdown() {
+    const unlocked = getUnlocked();
+    const panel = document.getElementById('areaDropdownPanel');
+    if (!panel) return;
+    panel.innerHTML = '';
+
+    const all = document.createElement('div');
+    all.className = 'area-dropdown-item selected';
+    all.dataset.value = '';
+    all.innerHTML = '<span class="item-dot"></span>すべて';
+    all.onclick = () => selectArea('', 'すべて');
+    panel.appendChild(all);
+
+    unlocked.forEach(id => {
+      const item = document.createElement('div');
+      item.className = 'area-dropdown-item';
+      item.dataset.value = id;
+      item.innerHTML = `<span class="item-dot"></span>${PREF_ID_TO_NAME[id] || id}`;
+      item.onclick = () => selectArea(id, PREF_ID_TO_NAME[id] || id);
+      panel.appendChild(item);
+    });
+  }
+
+  function selectArea(value, label) {
+    _selectedArea = value;
+    document.getElementById('areaSelDisplay').textContent = label;
+    document.querySelectorAll('.area-dropdown-item').forEach(el => {
+      el.classList.toggle('selected', el.dataset.value === value);
+    });
+    closeAreaDropdown();
+    applyAreaFilter();
+  }
+
+  function toggleAreaDropdown(e) {
+    e.stopPropagation();
+    const panel = document.getElementById('areaDropdownPanel');
+    const chevron = document.getElementById('areaChevron');
+    const bar = document.getElementById('searchBarWrap');
+    const isOpen = panel.classList.contains('open');
+    if (isOpen) {
+      closeAreaDropdown();
+    } else {
+      panel.classList.add('open');
+      chevron.classList.add('open');
+      bar.classList.add('dropdown-open');
+    }
+  }
+
+  function closeAreaDropdown() {
+    document.getElementById('areaDropdownPanel')?.classList.remove('open');
+    document.getElementById('areaChevron')?.classList.remove('open');
+    document.getElementById('searchBarWrap')?.classList.remove('dropdown-open');
+  }
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#areaSelectWrap')) closeAreaDropdown();
+  });
+
+  function applyAreaFilter() {
+    const unlocked = getUnlocked();
+    const selected = _selectedArea;
+    const cards = document.querySelectorAll('.spot-card[data-prefecture]');
+    let visibleCount = 0;
+
+    cards.forEach(card => {
+      const pref = card.dataset.prefecture;
+      const inUnlocked = unlocked.includes(pref);
+      const matchesSel = !selected || pref === selected;
+      if (inUnlocked && matchesSel) {
+        card.style.display = '';
+        visibleCount++;
+      } else {
+        card.style.display = 'none';
+      }
+    });
+
+    // 件数更新
+    const countEl = document.querySelector('.count-num');
+    if (countEl) countEl.textContent = visibleCount;
+
+    // 空状態表示
+    const list = document.querySelector('.spot-list');
+    let emptyEl = document.getElementById('emptyState');
+    if (visibleCount === 0) {
+      if (!emptyEl) {
+        emptyEl = document.createElement('div');
+        emptyEl.id = 'emptyState';
+        emptyEl.innerHTML = `
+          <div style="text-align:center;padding:60px 24px;color:rgba(255,255,255,0.35);">
+            <div style="font-size:40px;margin-bottom:16px;">🔒</div>
+            <div style="font-size:16px;font-weight:600;margin-bottom:10px;">スポットがありません</div>
+            <div style="font-size:13px;line-height:1.7;">
+              解除済みエリアのスポットのみ表示されます。<br>
+              <a href="{{ url_for('map') }}" style="color:rgba(255,255,255,0.6);text-decoration:underline;">エリアを解除する →</a>
+            </div>
+          </div>`;
+        list.prepend(emptyEl);
+      }
+    } else {
+      if (emptyEl) emptyEl.remove();
+    }
+  }
+
+  /* ── Card animation & ユーザー投稿読み込み ── */
+  window.addEventListener('load', () => {
+    buildAreaDropdown(); // 解除済みエリアのみドロップダウンに表示
+    loadUserPosts();   // localStorage から投稿カードを生成
+    applyAreaFilter(); // エリアフィルターを適用（カード数も更新）
+    initFavButtons();  // お気に入り状態を復元
+    document.querySelectorAll('.spot-card').forEach((card, i) => {
+      if (card.style.display !== 'none') {
+        setTimeout(() => card.classList.add('visible'), i * 100);
+      }
+    });
+  });
+
+  /* 都県名 → 内部ID のマッピング */
+  const PREF_NAME_MAP = {
+    '群馬県': 'gunma',
+    '栃木県': 'tochigi',
+    '茨城県': 'ibaraki',
+    '埼玉県': 'saitama',
+    '千葉県': 'chiba',
+    '東京都': 'tokyo',
+    '神奈川県': 'kanagawa',
+  };
+
+  /* 都県の中心（ロックアイコン表示位置） */
+  const PREF_CENTERS = {
+    gunma:    [36.57, 138.85],
+    tochigi:  [36.57, 139.80],
+    ibaraki:  [36.28, 140.55],
+    saitama:  [36.00, 139.40],
+    tokyo:    [35.67, 139.45],
+    chiba:    [35.40, 140.35],
+    kanagawa: [35.30, 139.38],
+  };
+
+  /* ── Leaflet Map ── */
+  const SPOTS = [
+    { name: '旧岩崎邸庭園',   lat: 35.7089, lng: 139.7712, rating: 4.6, highlight: false, pref: 'tokyo', level: '初級', myPost: false },
+    { name: '不忍池',         lat: 35.7127, lng: 139.7711, rating: 4.4, highlight: false, pref: 'tokyo', level: '初級', myPost: false },
+    { name: '竹林公園',       lat: 35.7528, lng: 139.6498, rating: 4.3, highlight: false, pref: 'tokyo', level: '初級', myPost: false },
+    { name: '清澄庭園',       lat: 35.6802, lng: 139.7975, rating: 4.5, highlight: false, pref: 'tokyo', level: '初級', myPost: false },
+    { name: '等々力渓谷',     lat: 35.6094, lng: 139.6467, rating: 4.7, highlight: true,  pref: 'tokyo', level: '初級', myPost: false },
+    { name: '小石川後楽園',   lat: 35.7056, lng: 139.7483, rating: 4.8, highlight: false, pref: 'tokyo', level: '初級', myPost: false },
+  ];
+
+  function makeIcon(highlight, level, myPost) {
+    let fillColor, strokeColor, dotColor;
+    if (myPost) {
+      fillColor   = highlight ? 'rgba(200,164,90,0.9)' : 'rgba(200,164,90,0.65)';
+      strokeColor = 'rgba(255,255,255,0.85)';
+      dotColor    = '#fff';
+    } else if (level === '初級') {
+      fillColor   = highlight ? 'rgba(59,130,246,0.9)' : 'rgba(59,130,246,0.65)';
+      strokeColor = highlight ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)';
+      dotColor    = highlight ? '#fff' : 'rgba(255,255,255,0.85)';
+    } else if (level === '上級') {
+      fillColor   = highlight ? 'rgba(220,80,80,0.85)' : 'rgba(220,80,80,0.6)';
+      strokeColor = highlight ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)';
+      dotColor    = highlight ? '#fff' : 'rgba(255,255,255,0.85)';
+    } else {
+      fillColor   = highlight ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.45)';
+      strokeColor = highlight ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.4)';
+      dotColor    = highlight ? 'rgba(30,30,30,0.9)' : 'rgba(200,200,200,0.8)';
+    }
+    const svg = `
+      <div class="pin-inner">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+          <path d="M14 0C6.27 0 0 6.27 0 14c0 9.63 14 22 14 22S28 23.63 28 14C28 6.27 21.73 0 14 0z"
+                fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.5"/>
+          <circle cx="14" cy="14" r="5" fill="${dotColor}" fill-opacity="0.9"/>
+        </svg>
+      </div>`;
+    return L.divIcon({
+      html: svg,
+      iconSize:   [28, 36],
+      iconAnchor: [14, 36],
+      popupAnchor:[0, -38],
+      className:  ''
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const KANTO_BOUNDS = L.latLngBounds(
+      [34.7, 138.0],  // 南西端
+      [37.2, 141.2]   // 北東端
+    );
+
+    leafletMap = L.map('leaflet-map', {
+      center:              [35.68, 139.75],
+      zoom:                11,
+      minZoom:             8,
+      maxZoom:             14,
+      maxBounds:           KANTO_BOUNDS,
+      maxBoundsViscosity:  1.0,   // 範囲外にスクロール不可
+      zoomControl:         true,
+    });
+
+    /* ラベル専用ペイン（z-index 350 = オーバーレイ 400 の下） */
+    leafletMap.createPane('labelsPane');
+    leafletMap.getPane('labelsPane').style.zIndex = 350;
+    leafletMap.getPane('labelsPane').style.pointerEvents = 'none';
+
+    /* ベースタイル（ESRI 衛星写真） */
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri',
+      maxZoom: 19,
+    }).addTo(leafletMap);
+
+    /* ラベルタイル（日本語）— オーバーレイの下に配置 */
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+      attribution: '',
+      maxZoom: 19,
+      subdomains: 'abcd',
+      pane: 'labelsPane',
+    }).addTo(leafletMap);
+
+    const unlocked = getUnlocked();
+
+    /* ロックアイコンを先に配置（GeoJSONと独立） */
+    Object.entries(PREF_CENTERS).forEach(([id, center]) => {
+      if (unlocked.includes(id)) return;
+      L.marker(center, {
+        icon: L.divIcon({
+          html: `<div class="lock-marker">🔒</div>`,
+          iconSize: [36, 36], iconAnchor: [18, 18], className: '',
+        }),
+        interactive: false,
+        zIndexOffset: 100,
+      }).addTo(leafletMap);
+    });
+
+    /* GeoJSON を fetch して
+       ① 世界マスク（穴 = 関東都県の実形状）
+       ② ロック中都県のオーバーレイ
+       を同時に生成                              */
+    fetch('https://raw.githubusercontent.com/dataofjapan/land/master/japan.geojson')
+      .then(r => r.json())
+      .then(data => {
+        const kantoFeatures = data.features.filter(f =>
+          f.properties && PREF_NAME_MAP[f.properties.nam_ja] !== undefined
+        );
+
+        /* 世界マスク（関東以外を隠す） */
+        const worldRing = [[-90,-180],[-90,180],[90,180],[90,-180]];
+        const holes = [];
+        kantoFeatures.forEach(f => {
+          const polys = f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [f.geometry.coordinates];
+          polys.forEach(poly => holes.push(poly[0].map(([lng, lat]) => [lat, lng])));
+        });
+        L.polygon([worldRing, ...holes], {
+          color: 'none', fillColor: '#1a2030', fillOpacity: 0.97, interactive: false,
+        }).addTo(leafletMap);
+
+        /* 都県境界線 */
+        L.geoJSON(
+          { type: 'FeatureCollection', features: kantoFeatures },
+          {
+            style: feature => {
+              const id = PREF_NAME_MAP[feature.properties.nam_ja];
+              const locked = !unlocked.includes(id);
+              return {
+                fillOpacity: 0, fillColor: 'transparent',
+                color: locked ? 'rgba(100,120,160,0.35)' : 'rgba(0,0,0,0.08)',
+                weight: 1,
+              };
+            },
+            interactive: false,
+          }
+        ).addTo(leafletMap);
+
+        /* ── ロックエリア オーバーレイ ── */
+        L.geoJSON(
+          { type: 'FeatureCollection', features: kantoFeatures },
+          {
+            style: feature => {
+              const id = PREF_NAME_MAP[feature.properties.nam_ja];
+              const locked = !unlocked.includes(id);
+              return locked ? {
+                fillColor:   '#1a2030',
+                fillOpacity: 0.78,
+                color:       'rgba(255,255,255,0.15)',
+                weight:      1,
+              } : {
+                fillOpacity: 0,
+                color:       'rgba(255,255,255,0.1)',
+                weight:      0.5,
+              };
+            },
+            interactive: false,
+          }
+        ).addTo(leafletMap);
+      })
+      .catch(() => {
+        // フォールバック：近似ポリゴン（ネット接続なし時）
+        console.warn('GeoJSON取得失敗 — 近似ポリゴンで代替');
+        const worldRing = [[-90,-180],[-90,180],[90,180],[90,-180]];
+        const kantoHole = [
+          [37.00,138.40],[37.00,140.25],[36.85,140.92],
+          [34.90,140.92],[34.90,139.82],[35.12,138.87],
+          [35.85,138.55],[36.20,138.40],
+        ];
+        L.polygon([worldRing, kantoHole], {
+          color:'none', fillColor:'#0a0e16', fillOpacity:0.85, interactive:false,
+        }).addTo(leafletMap);
+      });
+
+    /* 解除済みエリアの組み込みスポットマーカーを追加 */
+    SPOTS.forEach((sp, i) => {
+      if (!unlocked.includes(sp.pref)) return;
+      const spotId = `spot-00${i + 1}`;
+      const marker = L.marker([sp.lat, sp.lng], { icon: makeIcon(sp.highlight, sp.level, sp.myPost) }).addTo(leafletMap);
+      marker.bindPopup(`
+        <div class="map-popup">
+          <div class="mp-name">${sp.name}</div>
+          <div class="mp-rating">★ ${sp.rating}</div>
+        </div>
+      `, { className: 'dark-popup' });
+      markerMap[spotId] = { marker, sp };
+
+      // ピン登場バウンスアニメ（inner divに適用してLeafletのtransformと衝突しない）
+      setTimeout(() => {
+        const el = marker.getElement();
+        if (!el) return;
+        const inner = el.querySelector('.pin-inner');
+        if (!inner) return;
+        inner.style.animationName           = 'pinBounceIn';
+        inner.style.animationDuration       = '0.55s';
+        inner.style.animationTimingFunction = 'cubic-bezier(0.34,1.56,0.64,1)';
+        inner.style.animationFillMode       = 'both';
+      }, i * 100 + 100);
+
+      // ピンクリック → 対応カードにスクロール＆フォーカス
+      marker.on('click', () => {
+        const card = document.querySelector(`.spot-card[data-spot-id="${spotId}"]`);
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          card.classList.add('card-focus');
+          setTimeout(() => card.classList.remove('card-focus'), 1200);
+        }
+      });
+    });
+
+    /* ユーザー投稿スポットのマーカーを追加 */
+    addUserMarkers(unlocked);
+  });
+
+  /* ============================
+     ユーザー投稿 — localStorage 連携
+     ============================ */
+  const PREF_LABELS_JP = {
+    tokyo: '東京都', kanagawa: '神奈川県', saitama: '埼玉県',
+    chiba: '千葉県', ibaraki: '茨城県', tochigi: '栃木県', gunma: '群馬県',
+  };
+  const DIFF_LABELS_JP = ['', '初級', '初中級', '中級', '上級', 'エキスパート'];
+
+  function getUserPosts() {
+    try { return JSON.parse(localStorage.getItem('sk_posts') || '[]'); }
+    catch { return []; }
+  }
+
+  /* ゴールドのマップピン（ユーザー投稿用） */
+  function makeUserIcon() {
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+        <path d="M14 0C6.27 0 0 6.27 0 14c0 9.63 14 22 14 22S28 23.63 28 14C28 6.27 21.73 0 14 0z"
+              fill="rgba(200,164,90,0.75)" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+        <circle cx="14" cy="14" r="5" fill="#fff"/>
+      </svg>`;
+    return L.divIcon({ html: svg, iconSize: [28,36], iconAnchor: [14,36], popupAnchor: [0,-38], className: '' });
+  }
+
+  /* マップピンを追加（マップ初期化後に呼ぶ） */
+  function addUserMarkers(unlocked) {
+    if (!leafletMap) return;
+    getUserPosts().forEach(post => {
+      if (!unlocked.includes(post.pref)) return;
+      const marker = L.marker([post.lat, post.lng], { icon: makeUserIcon() }).addTo(leafletMap);
+      marker.bindPopup(`
+        <div class="map-popup">
+          <div class="mp-name">${post.name}</div>
+          <div class="mp-rating" style="color:#c8a45a;">★ 自分の投稿</div>
+        </div>
+      `, { className: 'dark-popup' });
+    });
+  }
+
+  /* スポットカードを生成して .spot-list に挿入 */
+  function loadUserPosts() {
+    const posts    = getUserPosts();
+    const spotList = document.querySelector('.spot-list');
+    const pagination = document.querySelector('.pagination');
+
+    // 既存のユーザー投稿カードを一旦削除（リロード等の重複防止）
+    document.querySelectorAll('.spot-card.user-post').forEach(c => c.remove());
+
+    posts.forEach(post => {
+      const card = document.createElement('div');
+      card.className = 'spot-card user-post';
+      card.dataset.prefecture = post.pref;
+      card.dataset.spotId = `user-${post.id || post.name}`;
+
+      const scoreText = post.score > 0 ? post.score + '.0' : '—';
+      const diffText  = DIFF_LABELS_JP[post.difficulty] || '';
+      const thumbHTML = post.photo
+        ? `<img src="${post.photo}" alt="${post.name}">`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#1c1c1c;">
+             <i class="fa fa-image" style="font-size:32px;color:rgba(255,255,255,0.1);"></i>
+           </div>`;
+
+      card.innerHTML = `
+        <div class="card-thumb">
+          ${thumbHTML}
+          <div class="card-thumb-grad"></div>
+          <button class="fav-btn"><i class="fa fa-bookmark"></i></button>
+          <div class="card-tags">
+            <span class="tag" style="background:rgba(200,164,90,0.2);color:#c8a45a;border:1px solid rgba(200,164,90,0.35);">
+              <i class="fa fa-user" style="font-size:9px;"></i> 自分の投稿
+            </span>
+            ${post.genre    ? `<span class="tag tag-terrain">${post.genre}</span>` : ''}
+            ${diffText      ? `<span class="tag tag-level ${diffText === '初級' || diffText === '初中級' ? 'tag-beginner' : diffText === '上級' || diffText === 'エキスパート' ? 'tag-expert' : ''}">${diffText}</span>` : ''}
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <div>
+              <div class="card-name">${post.name}</div>
+              <div class="card-location">
+                <i class="fa fa-map-marker-alt"></i> ${PREF_LABELS_JP[post.pref] || post.pref}
+              </div>
+            </div>
+            <div class="card-rating-wrap">
+              <div class="card-rating" style="${post.score > 0 ? 'color:#c8a45a;' : 'color:rgba(255,255,255,0.3);'}">${scoreText}</div>
+              <div class="card-review-count">${post.postedAt || ''}</div>
+            </div>
+          </div>
+          ${post.desc ? `<div class="card-desc">${post.desc}</div>` : ''}
+          ${post.tags && post.tags.length
+            ? `<div class="card-meta" style="flex-wrap:wrap;gap:5px;">
+                 ${post.tags.slice(0,4).map(t =>
+                   `<span style="font-size:11px;color:#c8a45a;background:rgba(200,164,90,0.1);padding:2px 8px;border-radius:50px;">#${t}</span>`
+                 ).join('')}
+               </div>`
+            : ''}
+          <div class="card-footer">
+            <div class="card-access" style="font-size:12px;color:rgba(255,255,255,0.3);">
+              <i class="fa fa-map-marker-alt" style="margin-right:4px;color:#c8a45a;"></i>
+              ${post.address ? post.address.split(',')[0] : '位置情報あり'}
+            </div>
+            <button class="card-detail-btn">詳しく見る <i class="fa fa-chevron-right"></i></button>
+          </div>
+        </div>`;
+
+      // ページネーションの直前に挿入（なければ末尾）
+      if (pagination) {
+        spotList.insertBefore(card, pagination);
+      } else {
+        spotList.appendChild(card);
+      }
+    });
+  }
+
+  /* ============================
+     マップ内 駅名・地名検索 (Nominatim)
+     ============================ */
+  const KANTO_BOUNDS_BOX = '138.0,34.7,141.2,37.2'; // minLng,minLat,maxLng,maxLat
+  let mapSearchTimer = null;
+
+  function onMapSearchInput() {
+    const val = document.getElementById('mapSearchInput').value.trim();
+    document.getElementById('mapSearchClear').style.display = val ? '' : 'none';
+    clearTimeout(mapSearchTimer);
+    if (val.length < 2) {
+      closeMapSuggestions();
+      return;
+    }
+    mapSearchTimer = setTimeout(() => fetchMapSuggestions(val), 350);
+  }
+
+  async function fetchMapSuggestions(q) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&countrycodes=jp&viewbox=${KANTO_BOUNDS_BOX}&bounded=1&accept-language=ja`;
+      const res = await fetch(url, { headers: { 'Accept-Language': 'ja' } });
+      const data = await res.json();
+      renderMapSuggestions(data);
+    } catch { closeMapSuggestions(); }
+  }
+
+  function renderMapSuggestions(results) {
+    const box = document.getElementById('mapSearchSuggestions');
+    if (!results.length) {
+      box.innerHTML = `<div class="map-sug-empty">見つかりませんでした</div>`;
+      box.classList.add('open');
+      return;
+    }
+    box.innerHTML = results.map((r, i) => {
+      const name = r.display_name.split(',')[0];
+      const detail = r.display_name.split(',').slice(1, 3).join(',').trim();
+      return `<div class="map-sug-item" onclick="selectMapSuggestion(${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">
+        <i class="fa fa-map-marker-alt map-sug-icon"></i>
+        <div><div class="map-sug-name">${name}</div><div class="map-sug-detail">${detail}</div></div>
+      </div>`;
+    }).join('');
+    box.classList.add('open');
+  }
+
+  function selectMapSuggestion(lat, lng, name) {
+    if (!leafletMap) return;
+    leafletMap.setView([lat, lng], 13);
+    document.getElementById('mapSearchInput').value = name;
+    document.getElementById('mapSearchClear').style.display = '';
+    closeMapSuggestions();
+  }
+
+  function clearMapSearch() {
+    document.getElementById('mapSearchInput').value = '';
+    document.getElementById('mapSearchClear').style.display = 'none';
+    closeMapSuggestions();
+  }
+
+  function closeMapSuggestions() {
+    document.getElementById('mapSearchSuggestions').classList.remove('open');
+  }
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#mapSearchBar') && !e.target.closest('#mapSearchSuggestions')) {
+      closeMapSuggestions();
+    }
+  });
+
+  /* ── Spot Detail Modal ── */
+  let _modalSourceCard = null;
+
+  function openSpotModal(cardEl) {
+    _modalSourceCard = cardEl;
+
+    const img         = cardEl.querySelector('.card-thumb img');
+    const name        = cardEl.querySelector('.card-name')?.textContent || '';
+    const locEl       = cardEl.querySelector('.card-location');
+    const locText     = locEl ? locEl.textContent.trim() : '';
+    const rating      = cardEl.querySelector('.card-rating')?.textContent || '';
+    const ratingLabel = cardEl.querySelector('.card-rating-label')?.textContent || '';
+    const review      = cardEl.querySelector('.card-review-count')?.textContent || '';
+    const desc        = cardEl.querySelector('.card-desc')?.textContent || '';
+    const tagsHTML    = cardEl.querySelector('.card-tags')?.innerHTML || '';
+    const metaHTML    = cardEl.querySelector('.card-meta')?.innerHTML || '';
+    const accessHTML  = cardEl.querySelector('.card-access')?.innerHTML || '';
+    const favActive   = cardEl.querySelector('.fav-btn')?.classList.contains('active');
+
+    document.getElementById('modalImg').src          = img?.src || '';
+    document.getElementById('modalName').textContent = name;
+    document.getElementById('modalLoc').innerHTML    = `<i class="fa fa-map-marker-alt"></i> ${locText}`;
+    document.getElementById('modalRating').textContent      = rating;
+    document.getElementById('modalRatingLabel').textContent = ratingLabel;
+    document.getElementById('modalReview').textContent      = review;
+    document.getElementById('modalDesc').textContent        = desc;
+    document.getElementById('modalTags').innerHTML   = tagsHTML;
+    document.getElementById('modalMeta').innerHTML   = metaHTML;
+    document.getElementById('modalAccess').innerHTML = accessHTML;
+    document.getElementById('modalFav').classList.toggle('active', favActive);
+
+    document.getElementById('spotModalOverlay').classList.add('open');
+    document.getElementById('spotModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeSpotModal() {
+    document.getElementById('spotModalOverlay').classList.remove('open');
+    document.getElementById('spotModal').classList.remove('open');
+    document.body.style.overflow = '';
+    _modalSourceCard = null;
+  }
+
+  function toggleModalFav() {
+    const btn = document.getElementById('modalFav');
+    btn.classList.toggle('active');
+    if (_modalSourceCard) {
+      const cardFav = _modalSourceCard.querySelector('.fav-btn');
+      if (cardFav) cardFav.classList.toggle('active', btn.classList.contains('active'));
+    }
+  }
+
+  /* ── カード 3D Tilt ── */
+  document.addEventListener('mousemove', e => {
+    const card = e.target.closest('.spot-card');
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const cx = rect.left + rect.width  / 2;
+    const cy = rect.top  + rect.height / 2;
+    const dx = (e.clientX - cx) / (rect.width  / 2);
+    const dy = (e.clientY - cy) / (rect.height / 2);
+    const rotY =  dx * 8;
+    const rotX = -dy * 5;
+    card.style.animation = 'none';
+    card.style.opacity   = '1';
+    card.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateY(0) scale(1.02)`;
+    card.style.boxShadow = `${-rotY * 1.5}px ${rotX * 1.5}px 28px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`;
+    card.style.setProperty('--mx', `${((e.clientX - rect.left) / rect.width  * 100).toFixed(1)}%`);
+    card.style.setProperty('--my', `${((e.clientY - rect.top ) / rect.height * 100).toFixed(1)}%`);
+  });
+
+  document.addEventListener('mouseleave', e => {
+    const card = e.target.closest?.('.spot-card');
+    if (card) resetCard(card);
+  }, true);
+
+  document.addEventListener('mouseout', e => {
+    if (!e.currentTarget) return;
+    const card = e.target.closest('.spot-card');
+    if (card && !card.contains(e.relatedTarget)) resetCard(card);
+  });
+
+  function resetCard(card) {
+    card.style.transition = 'transform 0.45s cubic-bezier(0.23,1,0.32,1), box-shadow 0.45s ease';
+    card.style.transform  = 'perspective(800px) rotateX(0deg) rotateY(0deg) translateY(0) scale(1)';
+    card.style.boxShadow  = '';
+    setTimeout(() => { card.style.transition = 'border-color 0.15s, box-shadow 0.15s'; }, 460);
+  }
+
+  /* ── カード ↔ マップピン 連動 ── */
+  document.addEventListener('mouseover', e => {
+    const card = e.target.closest('.spot-card[data-spot-id]');
+    if (!card) return;
+    const { marker } = markerMap[card.dataset.spotId] || {};
+    if (marker) {
+      const el = marker.getElement();
+      if (el) el.style.transform = (el.style.transform || '').replace(/scale\([^)]*\)/, '') + ' scale(1.4)';
+      el && (el.style.transition = 'transform 0.2s ease');
+      el && (el.style.zIndex = '9999');
+    }
+  });
+
+  document.addEventListener('mouseout', e => {
+    const card = e.target.closest('.spot-card[data-spot-id]');
+    if (!card) return;
+    const { marker } = markerMap[card.dataset.spotId] || {};
+    if (marker) {
+      const el = marker.getElement();
+      if (el) {
+        el.style.transform = el.style.transform.replace(/scale\([^)]*\)\s*/, '');
+        el.style.zIndex = '';
+      }
+    }
+  });
+
+  /* 詳しく見るボタン — イベント委譲 */
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.card-detail-btn');
+    if (btn) {
+      const card = btn.closest('.spot-card');
+      if (card) {
+        openSpotModal(card);
+        // マップをスポット位置にズーム
+        const { marker, sp } = markerMap[card.dataset.spotId] || {};
+        if (marker && leafletMap) {
+          leafletMap.flyTo([sp.lat, sp.lng], 14, { duration: 1.2 });
+          setTimeout(() => marker.openPopup(), 1300);
+        }
+      }
+    }
+  });
+
+  /* ESC でモーダルを閉じる */
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeSpotModal();
+  });
+</script>
+</body>
+</html>

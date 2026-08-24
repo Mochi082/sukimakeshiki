@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>すきまけしき － spots</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <style>
+    .lock-marker {
+      font-size: 13px;
+      line-height: 36px;
+      text-align: center;
+      opacity: 0.3;
+      pointer-events: none;
+    }
+    .locked-overlay {
+      pointer-events: none;
+    }
+
+    /* ── マップ全画面拡大 ── */
+    .map-panel.expanded {
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      width: 100% !important;
+      height: 100dvh;
+      background: #111;
+    }
+    .map-panel.expanded .map-sticky {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .map-panel.expanded .map-frame {
+      flex: 1;
+      min-height: 0;
+    }
+    .map-panel.expanded #leaflet-map {
+      height: 100% !important;
+    }
+    .map-panel.expanded .map-selected {
+      display: none;
+    }
+    .map-expand-btn {
+      cursor: pointer;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.7);
+      border-radius: 6px;
+      padding: 5px 9px;
+      font-size: 13px;
+      transition: background 0.2s, color 0.2s;
+    }
+    .map-expand-btn:hover {
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== DRAWER ===== -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<nav class="drawer" id="drawer">
+  <div class="drawer-logo">
+    <img src="/static/images/icon.png" alt="">
+    <div class="logo-name">sukima</div>
+    <div class="logo-sub">すきまけしき</div>
+  </div>
+  <div class="drawer-menu">
+    <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' else '' }}"><i class="fa fa-home"></i> home</a>
+    <a href="{{ url_for('post') }}" class="{{ 'active' if request.endpoint == 'post' else '' }}"><i class="fa fa-plus"></i> post</a>
+    <a href="{{ url_for('post_list') }}" class="{{ 'active' if request.endpoint == 'post_list' else '' }}"><i class="fa fa-pen"></i> My post</a>
+    <a href="{{ url_for('spots') }}" class="{{ 'active' if request.endpoint == 'spots' else '' }}"><i class="fa fa-search"></i> spots</a>
+    <a href="{{ url_for('favorite') }}" class="{{ 'active' if request.endpoint == 'favorite' else '' }}"><i class="fa fa-bookmark"></i> favorite</a>
+    <a href="{{ url_for('map') }}" class="{{ 'active' if request.endpoint == 'map' else '' }}"><i class="fa fa-unlock-alt"></i> unlock</a>
+    <div class="drawer-spacer"></div>
+    <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint == 'settings' else '' }}"><i class="fa fa-cog"></i> settings</a>
+    <a href="{{ url_for('logout') }}" class="drawer-logout"><i class="fa fa-sign-out-alt"></i> ログアウト</a>
+    <div class="drawer-ticket"><i class="fa fa-ticket"></i> チケット <span id="drawerTicketCount">{{ ticket_count }}</span>枚</div>
+  </div>
+</nav>
+
+<!-- ===== MAIN PAGE ===== -->
+<div id="main-page" class="page active">
+
+  <!-- HEADER -->
+  <header class="main-header">
+    <button class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></button>
+    <div class="header-divider"></div>
+
+    <!-- 検索バー -->
+    <div class="area-select-wrap" id="areaSelectWrap">
+      <div class="search-bar-wrap" id="searchBarWrap">
+        <div class="search-segment" onclick="toggleAreaDropdown(event)">
+          <i class="fa fa-map-marker-alt seg-icon"></i>
+          <div class="seg-body">
+            <div class="seg-label">エリア</div>
+            <div class="seg-value" id="areaSelDisplay">すべて</div>
+          </div>
+          <i class="fa fa-chevron-down area-chevron" id="areaChevron"></i>
+        </div>
+        <button class="search-exec-btn"><i class="fa fa-search"></i></button>
+      </div>
+      <div class="area-dropdown-panel" id="areaDropdownPanel"></div>
+    </div>
+  </header>
+
+  <!-- 検索バー（固定） -->
+  <div class="map-search-overlay">
+    <div class="map-search-bar" id="mapSearchBar">
+      <i class="fa fa-search map-search-icon"></i>
+      <input class="map-search-input" id="mapSearchInput" type="text"
+             placeholder="駅名・地名で検索"
+             oninput="onMapSearchInput()"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();doMapSearch();}">
+      <button class="map-search-clear" id="mapSearchClear" onclick="clearMapSearch()" style="display:none;">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="map-search-suggestions" id="mapSearchSuggestions"></div>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="main-layout">
+
+    <!-- パネル開閉ボタン（パネル外に配置） -->
+    <button class="panel-toggle-btn" id="panelToggleBtn" onclick="toggleSpotsPanel()" title="パネルを閉じる">
+      <i class="fa fa-chevron-left" id="panelToggleIcon"></i>
+    </button>
+
+    <!-- ===== FLOATING SPOTS PANEL ===== -->
+    <div class="spots-float-panel" id="spotsFloatPanel">
+
+      <!-- SPOT LIST -->
+      <section class="spot-list">
+
+      <!-- ── ユーザー投稿（DBから取得） ── -->
+      {% set diff_labels = ['', '初級', '初中級', '中級', '上級', 'エキスパート'] %}
+      {% for post in posts %}
+      <div class="spot-card user-post" data-prefecture="{{ post.pref_key }}" data-spot-id="user-{{ post.id }}" data-post-id="{{ post.id }}" data-location="{{ post.location }}">
+        <div class="card-thumb">
+          {% if post.photo %}
+          <img src="/static/uploads/{{ post.photo }}" alt="{{ post.name }}">
+          {% else %}
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#1c1c1c;">
+            <i class="fa fa-image" style="font-size:32px;color:rgba(255,255,255,0.1);"></i>
+          </div>
+          {% endif %}
+          <div class="card-thumb-grad"></div>
+          <form method="POST" action="{{ url_for('favorite_toggle', spot_id=post.id) }}" class="fav-form">
+            <button type="submit" class="fav-btn {{ 'active' if post.id in favorited_ids else '' }}"><i class="fa fa-bookmark"></i></button>
+          </form>
+          
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <div>
+              <div class="card-name">{{ post.name }}</div>
+              <div class="card-location"><i class="fa fa-map-marker-alt"></i> {{ post.pref }}</div>
+            </div>
+          </div>
+          <div class="card-desc">{{ post.desc or ' ' }}</div>
+          <div class="card-footer">
+            <div class="card-tags">
+              <div class="tag card-time {{ post.time_select }}">{{ post.time_select }}</div>
+              <div class="card-level">
+              {% if post.difficulty %}
+              {% set diff_text = diff_labels[post.difficulty] %}
+              <span class="tag tag-level {{ 'tag-beginner' if diff_text in ['初級','初中級'] else ('tag-expert' if diff_text in ['上級','エキスパート'] else '') }}">{{ diff_text }}</span>
+              {% endif %}
+              </div>
+            </div>
+            <div class="card-detail">
+              <div class="card-access">
+                <i class="fa fa-gas-pump access-icon {{ 'ok' if 'gas' in post.facilities else 'ng' }}"></i>
+                <i class="fa fa-utensils access-icon {{ 'ok' if 'food' in post.facilities else 'ng' }}"></i>
+                <i class="fa fa-parking access-icon {{ 'ok' if 'parking' in post.facilities else 'ng' }}"></i>
+                <i class="fa fa-restroom access-icon {{ 'ok' if 'restroom' in post.facilities else 'ng' }}"></i>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button class="card-detail-btn">詳しく見る <i class="fa fa-chevron-right"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- ページネーション -->
+      <div class="pagination">
+        <button class="page-btn disabled"><i class="fa fa-chevron-left"></i></button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn disabled"><i class="fa fa-chevron-right"></i></button>
+      </div>
+    </section>
+
+    </div><!-- /.spots-float-panel -->
+
+    <!-- ===== RIGHT: MAP ===== -->
+    <div class="map-panel">
+      <div class="map-sticky">
+        <div class="map-header">
+          <span class="map-title page-label"><i class="fa fa-map"></i> area map</span>
+          <button class="map-expand-btn" onclick="toggleMapExpand()"><i class="fa fa-expand-alt"></i></button>
+        </div>
+        <div class="map-frame">
+          <div id="leaflet-map"></div>
+
+
+          <!-- マップ右下オーバーレイ: 選択中スポット
+          <div class="map-selected">
+          <div class="map-selected-label">選択中のスポット</div>
+          <div class="map-selected-card">
+            <img src="/static/images/home-image.png" alt="">
+            <div class="map-selected-info">
+              <div class="map-sel-name">乗鞍スカイライン 全線制覇</div>
+              <div class="map-sel-loc"><i class="fa fa-map-marker-alt"></i> 長野県 松本市</div>
+              <div class="map-sel-rating"><span class="map-sel-score">4.9</span> <span class="map-sel-stars">★★★★★</span></div>
+            </div>
+          </div> -->
+          </div><!-- /.map-selected -->
+        </div><!-- /.map-frame -->
+      </div><!-- /.map-sticky -->
+    </div><!-- /.map-panel -->
+
+  </div>
+</div>
+
+<!-- ===== SPOT DETAIL MODAL ===== -->
+<div class="spot-modal-overlay" id="spotModalOverlay" onclick="closeSpotModal()"></div>
+<div class="spot-modal" id="spotModal">
+  <button class="spot-modal-close" onclick="closeSpotModal()"><i class="fa fa-times"></i></button>
+  <div class="spot-modal-thumb">
+    <img id="modalImg" src="" alt="">
+    <div id="modalNoImg" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#1c1c1c;"> 
+      <i class="fa fa-image" style="font-size:32px;color:rgba(255,255,255,0.1);"></i> 
+    </div>
+    <div class="spot-modal-thumb-grad"></div>
+    
+  </div>
+  <div class="spot-modal-body">
+    <div class="spot-modal-top">
+      <div>
+        <div class="spot-modal-name" id="modalName"></div>
+        <div class="spot-modal-loc" id="modalLoc"></div>
+      </div>
+    </div>
+    <div class="spot-modal-desc" id="modalDesc"></div>
+    <div class="spot-modal-meta" id="modalMeta"></div>
+    <div class="spot-modal-footer">
+      <div class="spot-modal-select">
+        <div class="spot-modal-tags" id="modalTags"></div>
+        <div class="spot-modal-access" id="modalAccess"></div>
+      </div>
+      <form method="POST" id="modalFavForm">
+        <button type="submit" class="spot-modal-fav" id="modalFav">
+          <i class="fa fa-bookmark"></i> お気に入り
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+
+  window.SPOT_CONFIG = {
+    userPosts: {{ posts | tojson }},
+    unlocked: {{ unlocked | tojson }},
+    favoritedIds: {{ favorited_ids | tojson }},
+    mapUrl: "{{ url_for('map') }}",
+    currentUserId: {{ current_user.user_id | tojson }}
+  };
+
+</script>
+<script src="/static/js/spot.js"></script>
+</body>
+</html>

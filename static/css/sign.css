@@ -1,0 +1,392 @@
+/* ==============================
+   SIGN IN PAGE
+   ============================== */
+
+/* ロゴサイズをサインインページ用に上書き */
+.signin-page .logo-img {
+  width: 64px;
+  height: 64px;
+}
+
+/* カード中央配置 */
+.signin-wrap {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 100px 24px 60px;
+}
+
+/* ガラスモーフィズムカード */
+.signin-card {
+  width: 100%;
+  max-width: 380px;
+  background: rgba(10, 14, 22, 0.55);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 40px 36px;
+  opacity: 0;
+  animation: slideUp 0.7s 0.4s ease forwards;
+}
+
+/* カード内ロゴ */
+.signin-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.signin-logo img {
+  width: 300px;
+  object-fit: contain;
+  filter: brightness(0.9);
+}
+
+.signin-logo-name {
+  font-family: 'Klee One', 'Hiragino Mincho ProN', serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.22em;
+}
+
+/* サブテキスト */
+.signin-sub {
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+  text-align: center;
+  line-height: 1.7;
+  margin-top: -18px;
+  margin-bottom: 24px;
+  letter-spacing: 0.04em;
+}
+
+/* タイトル */
+.signin-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  text-align: center;
+  margin-bottom: 28px;
+  letter-spacing: 0.1em;
+}
+
+.form-section-sep {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.45);
+  text-align: center;
+  margin-bottom: 7px;
+}
+
+/* フォームグループ */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 7px;
+  letter-spacing: 0.05em;
+}
+
+.form-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 13px 16px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.88);
+  outline: none;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.form-input::placeholder {
+  color: rgba(255, 255, 255, 0.22);
+}
+
+.form-input:focus {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+}
+
+/* 排気量　cc表示 */
+.engine_cc {
+    position: relative;
+}
+
+.engine_cc .form-input {
+    width: 100%;
+    padding-right: 45px;   /* 「㏄」と重ならないようにする */
+    box-sizing: border-box;
+}
+
+.engine_cc .cc {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 18px;
+    pointer-events: none;  /* クリックしても入力欄にフォーカスされる */
+}
+
+/* 活動時間帯セレクター */
+.selectbox {
+    position: relative;
+    width: 100%;
+}
+
+.selectbox button {
+    cursor: pointer;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    padding: 13px 16px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.88);
+    outline: none;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    font-family: inherit;
+    box-sizing: border-box;
+    text-align: left;
+    position: relative;
+}
+
+.select-button::after {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 7px;
+    background: rgba(255, 255, 255, 0.45);
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    content: '';
+    pointer-events: none;
+}
+
+.selectbox ul {
+    display: none;
+    position: absolute;
+    width: 100%;
+    margin: 6px 0 0;
+    padding: 0;
+    list-style: none;
+    background: #2b2931;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    overflow: hidden;
+    z-index: 100;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.selectbox ul::-webkit-scrollbar {
+    width: 8px;
+}
+
+.selectbox ul::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+}
+
+.selectbox ul::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.selectbox.open ul {
+    display: block;
+}
+
+
+.selectbox li {
+    padding: 13px 16px;
+    color: rgba(255, 255, 255, 0.88);
+    cursor: pointer;
+}
+
+.selectbox li:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.selectbox select option {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.88);
+  border-radius: 10px;
+}
+
+/* パスワード入力ラッパー（目アイコン用） */
+.input-wrap {
+  position: relative;
+}
+
+.input-wrap .form-input {
+  padding-right: 44px;
+}
+
+.toggle-pw {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.toggle-pw:hover {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* パスワードを忘れた */
+.forgot-link {
+  display: block;
+  text-align: right;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+  margin-top: 8px;
+  margin-bottom: 24px;
+  transition: color 0.2s;
+}
+
+.forgot-link:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ログインボタン（btn-auth流用 + 上書き） */
+.btn-signin {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 15px 24px;
+  border-radius: 50px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.88);
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-signin:hover {
+  background: rgba(255, 255, 255, 0.16);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.06);
+}
+
+.btn-signin:active {
+  transform: translateY(0);
+}
+
+/* 区切り線 */
+.signin-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 20px;
+}
+
+.signin-divider::before,
+.signin-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.signin-divider span {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.28);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+/* パスワード一致メッセージ */
+.pw-match-msg {
+  font-size: 11px;
+  margin-top: 6px;
+  letter-spacing: 0.03em;
+  min-height: 16px;
+}
+
+/* 利用規約チェック */
+.terms-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 22px;
+  cursor: pointer;
+  line-height: 1.6;
+}
+
+.terms-check input[type="checkbox"] {
+  margin-top: 2px;
+  accent-color: rgba(255,255,255,0.7);
+  flex-shrink: 0;
+}
+
+.terms-link {
+  color: rgba(255,255,255,0.65);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s;
+}
+
+.terms-link:hover { color: #fff; }
+
+/* 新規登録リンク */
+.signup-link {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.signup-link a {
+  color: rgba(255, 255, 255, 0.65);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s;
+  cursor: pointer;
+}
+
+.signup-link a:hover {
+  color: #fff;
+}
+
+/* ==============================
+   レスポンシブ
+   ============================== */
+@media (max-width: 767px) {
+  .signin-wrap { padding: 80px 18px 40px; }
+  .signin-card { padding: 32px 22px; }
+
+  /* iOS自動ズーム防止 */
+  .form-input { font-size: 16px; }
+}

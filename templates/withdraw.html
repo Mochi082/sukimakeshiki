@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>すきまけしき － 退会</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/settings.css">
+</head>
+<body>
+  
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash-area">
+        {% for message in messages %}
+          <div class="flash-message">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+<div id="settings-page" class="page active">
+  
+  <header class="settings-header">
+    <a href="{{ url_for('settings') }}" class="back-btn"><i class="fa fa-chevron-left"></i></a>
+    <div class="header-divider"></div>
+    <span class="page-label">退会</span>
+  </header>
+
+  <div class="settings-content">
+    <section class="settings-section">
+      <div class="settings-card" style="background:rgba(220,60,60,0.06);border-color:rgba(220,60,60,0.2);padding:20px 18px;display:flex;align-items:flex-start;gap:14px;">
+        <i class="fa fa-triangle-exclamation" style="color:rgba(220,100,100,0.85);font-size:18px;margin-top:2px;flex-shrink:0;"></i>
+        <div>
+          <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:6px;">本当に退会しますか？</div>
+          <div style="color:rgba(255,255,255,0.45);font-size:12.5px;line-height:1.7;">退会するとアカウント・投稿・お気に入りなどすべてのデータが削除されます。この操作は取り消せません。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="settings-section">
+      <div class="settings-card">
+        <form method="POST" action="{{ url_for('withdraw') }}" novalidate>
+          <div class="settings-row">
+            <label class="settings-row-label">パスワードを入力して確認</label>
+            <div class="settings-row-right">
+              <input class="settings-input" type="password" name="password" placeholder="••••••••">
+            </div>
+          </div>
+          <div class="settings-divider"></div>
+          <div class="settings-row settings-row-action">
+            <button type="submit" class="settings-btn-danger">退会する</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- <div class="settings-toast" id="settingsToast"></div> -->
+<script src="/static/js/settings.js"></script>
+</body>
+</html>
